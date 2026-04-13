@@ -552,9 +552,9 @@ Cosmos DB 클라이언트, 입력 검증, Message Broker 추상화, Notification
 - Change Feed → outbox_publisher → Event Grid 발행 확인
 - 발행 실패 → failed_publish → outbox_retry → pending 복원 확인
 **Acceptance Criteria:**
-- [ ] pending 문서가 Event Grid로 발행됨
-- [ ] 발행 실패 → failed_publish → retry 후 재발행
-- [ ] Tests pass
+- [x] pending 문서가 Event Grid로 발행됨
+- [x] 발행 실패 → failed_publish → retry 후 재발행
+- [x] Tests pass
 
 ### Step 6-3: Consumer + DLQ + Replay 흐름 통합 테스트
 **Objective:** Consumer 전체 흐름 + DLQ + Replay 통합 테스트.
