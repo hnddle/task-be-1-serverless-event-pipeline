@@ -1,5 +1,5 @@
 ---
-name: plan
+name: make-plan
 description: Generate PLAN.md from SPEC.md with numbered implementation steps. Use after SPEC.md is finalized.
 user-invocable: true
 disable-model-invocation: true

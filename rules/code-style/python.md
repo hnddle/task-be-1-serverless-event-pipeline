@@ -1,15 +1,22 @@
 # Python Code Style
 
 - Python 3.11+ features allowed
-- Use type hints for all function parameters and return types
-- Use Pydantic for data validation (BaseModel, not dataclass)
-- Use async/await for all I/O operations in API layer
-- Imports order: stdlib → third-party → local (enforced by ruff)
-- Use `pathlib.Path` instead of `os.path`
-- String formatting: f-strings preferred
-- Maximum line length: 120 characters
-- Use `logging` module, never `print()` in production code
-- Constants in UPPER_SNAKE_CASE
-- Environment variables loaded via pydantic-settings
-- Linter/Formatter: ruff
-- Type checker: mypy
+- 모든 함수 파라미터와 반환 타입에 type hint 필수
+- 데이터 검증: Pydantic v2 `BaseModel` 사용 (dataclass 아님)
+- 비동기 I/O: `async/await` 사용 (Azure Functions, Cosmos DB 호출 등)
+- import 순서: stdlib → third-party → local (ruff isort로 강제)
+- 문자열 포매팅: f-string 우선
+- 경로: `pathlib.Path` 사용 (`os.path` 대신)
+- 최대 줄 길이: 120자
+- 프로덕션 코드에서 `print()` 절대 금지 — `logging` 모듈 사용 (`src/shared/logger.py`)
+- 상수: `UPPER_SNAKE_CASE`
+- 환경 변수: `pydantic-settings`의 `BaseSettings`로 로드 — 개별 파일에서 `os.environ` 직접 접근 금지
+- Linter / Formatter: ruff
+- Type checker: mypy (strict mode)
+- 인터페이스: ABC(Abstract Base Class)로 정의 (예: `MessageBroker`, `NotificationStrategy`)
+- 네이밍 규칙:
+  - 파일/모듈: `snake_case.py` (예: `circuit_breaker.py`)
+  - 클래스: `PascalCase`
+  - 함수/변수: `snake_case`
+  - 상수/환경 변수: `UPPER_SNAKE_CASE`
+  - Private: `_single_leading_underscore`

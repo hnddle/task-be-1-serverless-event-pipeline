@@ -1,5 +1,5 @@
 {
-  "_comment": "Python (FastAPI/Django) 프로젝트용 — settings.json에 병합하여 사용",
+  "_comment": "Python (FastAPI/Django) 프로젝트용 settings.json",
   "permissions": {
     "allow": [
       "Bash(python *)",

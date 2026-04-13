@@ -1,5 +1,5 @@
 ---
-name: spec
+name: make-spec
 description: Generate a structured SPEC.md from a project description. Use when starting a new project or major feature.
 argument-hint: (프로젝트 설명 또는 기획서 파일 경로)
 user-invocable: true

@@ -7,7 +7,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 {{PROJECT_NAME}} — {{ONE_LINE_DESCRIPTION}}
 현재 기획/설계 단계이며 코드 구현 전이다. SPEC.md와 PLAN.md에 따라 Phase 0부터 순차 구현 예정.
 
-- `CONCEPT.md` — 서비스 기획서
 - `SPEC.md` — 기술 명세서 (단일 진실 공급원)
 - `PLAN.md` — 구현 계획서
 
@@ -46,6 +45,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 @.claude/rules/git-workflow.md
 @.claude/rules/testing.md
 @.claude/rules/security.md
+@.claude/rules/twelve-factor.md
 
 ## Implementation Tracking
 
