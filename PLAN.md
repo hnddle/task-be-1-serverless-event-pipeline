@@ -456,12 +456,12 @@ Cosmos DB 클라이언트, 입력 검증, Message Broker 추상화, Notification
   - Circuit Breaker 상태 변경 (WARN: channel, provider, from_state, to_state)
   - Rate limit 도달/대기 (WARN/INFO: channel, provider)
 **Acceptance Criteria:**
-- [ ] Circuit Breaker Open 채널 → 즉시 실패
-- [ ] Rate Limiter 토큰 부족 → 대기 후 재시도
-- [ ] 발송 실패 → 지수 백오프 재시도
-- [ ] 전체 흐름이 순서대로 동작
-- [ ] SPEC §10.3의 Consumer 관련 필수 로그 이벤트가 모두 출력됨
-- [ ] Tests pass
+- [x] Circuit Breaker Open 채널 → 즉시 실패
+- [x] Rate Limiter 토큰 부족 → 대기 후 재시도
+- [x] 발송 실패 → 지수 백오프 재시도
+- [x] 전체 흐름이 순서대로 동작
+- [x] SPEC §10.3의 Consumer 관련 필수 로그 이벤트가 모두 출력됨
+- [x] Tests pass
 
 ---
 
