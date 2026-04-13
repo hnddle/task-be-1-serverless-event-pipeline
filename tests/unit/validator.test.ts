@@ -2,13 +2,10 @@
  * POST /events 입력 검증 테스트.
  */
 
-import { v4 as uuidv4 } from 'uuid';
-import { v1 as uuidv1 } from 'uuid';
 import { ValidationError } from '@src/shared/errors';
 import { validateCreateEvent } from '@src/shared/validator';
 
 const VALID_BODY = {
-  id: uuidv4(),
   event_type: 'appointment_confirmed',
   clinic_id: 'CLINIC_123',
   patient_id: 'PATIENT_456',
@@ -42,44 +39,6 @@ describe('유효한 요청 검증', () => {
       const body = makeBody({ event_type: et });
       const result = validateCreateEvent(body);
       expect(result.event_type).toBe(et);
-    }
-  });
-});
-
-describe('id 필드 검증', () => {
-  it('UUID 형식이 아닌 id는 에러가 발생한다', () => {
-    const body = makeBody({ id: 'not-a-uuid' });
-    try {
-      validateCreateEvent(body);
-      fail('Expected ValidationError');
-    } catch (err) {
-      expect(err).toBeInstanceOf(ValidationError);
-      const details = (err as ValidationError).toDict().details as { field: string }[];
-      expect(details.some((d) => d.field === 'id')).toBe(true);
-    }
-  });
-
-  it('id가 누락되면 에러가 발생한다', () => {
-    const { id: _, ...body } = VALID_BODY;
-    try {
-      validateCreateEvent(body);
-      fail('Expected ValidationError');
-    } catch (err) {
-      expect(err).toBeInstanceOf(ValidationError);
-      const details = (err as ValidationError).toDict().details as { field: string }[];
-      expect(details.some((d) => d.field === 'id')).toBe(true);
-    }
-  });
-
-  it('UUID v1은 거부된다', () => {
-    const body = makeBody({ id: uuidv1() });
-    try {
-      validateCreateEvent(body);
-      fail('Expected ValidationError');
-    } catch (err) {
-      expect(err).toBeInstanceOf(ValidationError);
-      const details = (err as ValidationError).toDict().details as { field: string }[];
-      expect(details.some((d) => d.field === 'id')).toBe(true);
     }
   });
 });
@@ -244,7 +203,7 @@ describe('channels 필드 검증', () => {
 
 describe('에러 응답 형식', () => {
   it('ValidationError.toDict()가 SPEC §8.4 형식을 따른다', () => {
-    const body = makeBody({ id: 'invalid', event_type: 'unknown', channels: [] });
+    const body = makeBody({ event_type: 'unknown', channels: [] });
     try {
       validateCreateEvent(body);
       fail('Expected ValidationError');
@@ -267,7 +226,6 @@ describe('에러 응답 형식', () => {
       expect(err).toBeInstanceOf(ValidationError);
       const details = (err as ValidationError).toDict().details as { field: string }[];
       const fields = new Set(details.map((d) => d.field));
-      expect(fields).toContain('id');
       expect(fields).toContain('event_type');
       expect(fields).toContain('clinic_id');
       expect(fields).toContain('patient_id');
@@ -275,7 +233,7 @@ describe('에러 응답 형식', () => {
   });
 
   it('각 detail 항목에 field와 message가 있다', () => {
-    const body = makeBody({ id: 'bad' });
+    const body = makeBody({ event_type: 'bad' });
     try {
       validateCreateEvent(body);
       fail('Expected ValidationError');
