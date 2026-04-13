@@ -513,13 +513,13 @@ Cosmos DB 클라이언트, 입력 검증, Message Broker 추상화, Notification
   - 응답: `{ replayed_count, failed_count, skipped_count }`
 - Replay 구조화 로그 (SPEC §10.3: INFO — dlq_id, original_event_id, original_correlation_id, new_correlation_id)
 **Acceptance Criteria:**
-- [ ] `GET /dlq` — clinic_id 없으면 400, 필터/페이지네이션 동작
-- [ ] 단건 replay 시 Outbox 패턴으로 재발행
-- [ ] 이미 replayed → 409
-- [ ] 새 correlation_id 발급 + 원본 correlation_id 로그 기록
-- [ ] 배치 replay에서 max_count > 500 → 500 클램핑
-- [ ] 배치 결과 카운트 정확
-- [ ] Tests pass
+- [x] `GET /dlq` — clinic_id 없으면 400, 필터/페이지네이션 동작
+- [x] 단건 replay 시 Outbox 패턴으로 재발행
+- [x] 이미 replayed → 409
+- [x] 새 correlation_id 발급 + 원본 correlation_id 로그 기록
+- [x] 배치 replay에서 max_count > 500 → 500 클램핑
+- [x] 배치 결과 카운트 정확
+- [x] Tests pass
 
 ---
 
