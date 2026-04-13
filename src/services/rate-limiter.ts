@@ -26,8 +26,8 @@ function isEtagConflict(err: unknown): boolean {
   return (
     typeof err === 'object' &&
     err !== null &&
-    'code' in err &&
-    (err as { code: number }).code === 412
+    (('statusCode' in err && (err as { statusCode: number }).statusCode === 412) ||
+      ('code' in err && (err as { code: number }).code === 412))
   );
 }
 
@@ -61,23 +61,31 @@ export class RateLimiter {
     return this.settings.RATE_LIMIT_EMAIL_PER_SEC;
   }
 
+  private defaultBucket(limiterId: string, maxTokens: number): RateLimiterDocument {
+    const now = new Date().toISOString();
+    return {
+      id: limiterId,
+      tokens: maxTokens,
+      max_tokens: maxTokens,
+      last_refill_at: now,
+      updated_at: now,
+    };
+  }
+
   private async readBucket(
     limiterId: string,
     maxTokens: number,
   ): Promise<RateLimiterDocument> {
     try {
       const { resource } = await this.container.item(limiterId, limiterId).read();
+      if (!resource) return this.defaultBucket(limiterId, maxTokens);
       return resource as RateLimiterDocument;
     } catch (err: unknown) {
-      if (typeof err === 'object' && err !== null && 'code' in err && (err as { code: number }).code === 404) {
-        const now = new Date().toISOString();
-        return {
-          id: limiterId,
-          tokens: maxTokens,
-          max_tokens: maxTokens,
-          last_refill_at: now,
-          updated_at: now,
-        };
+      const statusCode =
+        (err as Record<string, unknown>).statusCode ??
+        (err as Record<string, unknown>).code;
+      if (statusCode === 404) {
+        return this.defaultBucket(limiterId, maxTokens);
       }
       throw err;
     }
