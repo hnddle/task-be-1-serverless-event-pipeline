@@ -232,11 +232,11 @@ Cosmos DB 클라이언트, 입력 검증, Message Broker 추상화, Notification
 - 지원하지 않는 타입 → `ValueError` raise
 - Event Grid 어댑터: `azure-eventgrid` Python SDK 사용
 **Acceptance Criteria:**
-- [ ] `QUEUE_SERVICE_TYPE=EVENT_GRID` → EventGridAdapter 인스턴스 반환
-- [ ] 지원하지 않는 타입 → ValueError raise
-- [ ] `get_broker_name()` 정확히 반환
-- [ ] 어댑터가 MessageBroker ABC를 준수
-- [ ] Tests pass
+- [x] `QUEUE_SERVICE_TYPE=EVENT_GRID` → EventGridAdapter 인스턴스 반환
+- [x] 지원하지 않는 타입 → ValueError raise
+- [x] `get_broker_name()` 정확히 반환
+- [x] 어댑터가 MessageBroker ABC를 준수
+- [x] Tests pass
 
 ### Step 1-4: Notification Strategy (Mock 발송)
 **Objective:** 채널별 알림 전략 인터페이스와 Mock 구현체 구현.
