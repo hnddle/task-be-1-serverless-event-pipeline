@@ -2,7 +2,7 @@
   "name": "notification-pipeline",
   "version": "0.1.0",
   "description": "치과 보험 청구 시스템 — 이벤트 기반 알림 파이프라인",
-  "main": "dist/src/functions/*.js",
+  "main": "dist/src/index.js",
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
