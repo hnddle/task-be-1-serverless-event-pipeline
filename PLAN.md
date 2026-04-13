@@ -570,11 +570,11 @@ Cosmos DB 클라이언트, 입력 검증, Message Broker 추상화, Notification
 - DLQ: 최대 재시도 초과 → DLQ 저장 확인
 - Replay: DLQ replay → Outbox 재발행 → Consumer 재처리 확인
 **Acceptance Criteria:**
-- [ ] Consumer 정상 흐름 → completed 상태
-- [ ] 일부 채널 실패 → partially_completed + DLQ 저장
-- [ ] DLQ replay → 재발행 → 재처리 성공
-- [ ] 중복 replay → 409
-- [ ] Tests pass
+- [x] Consumer 정상 흐름 → completed 상태
+- [x] 일부 채널 실패 → partially_completed + DLQ 저장
+- [x] DLQ replay → 재발행 → 재처리 성공
+- [x] 중복 replay → 409
+- [x] Tests pass
 
 ---
 
