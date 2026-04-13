@@ -5,11 +5,9 @@ dist/
 
 # Azure Functions
 local.settings.json
-.funcignore
 
 # IDE
 .idea/
-.vscode/
 *.swp
 *.swo
 
@@ -28,7 +26,14 @@ Thumbs.db
 # Azurite (local storage emulator)
 __azurite_db_*
 __blobstorage__/
-AzuriteConfig/
+__queuestorage__/
+AzuriteConfig
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Python leftovers
+*.pyc
+__pycache__/
+.python-version
+.ruff_cache/
