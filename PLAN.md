@@ -432,11 +432,11 @@ Cosmos DB 클라이언트, 입력 검증, Message Broker 추상화, Notification
 - 각 재시도마다 `retry_count`, `last_error` 갱신
 - 재시도 시 Idempotency 확인
 **Acceptance Criteria:**
-- [ ] MAX_RETRY_COUNT까지 자동 재시도
-- [ ] 지수 백오프 간격 정확히 계산
-- [ ] 각 재시도마다 retry_count, last_error 갱신
-- [ ] 환경 변수 변경 시 재시도 동작 변경
-- [ ] Tests pass
+- [x] MAX_RETRY_COUNT까지 자동 재시도
+- [x] 지수 백오프 간격 정확히 계산
+- [x] 각 재시도마다 retry_count, last_error 갱신
+- [x] 환경 변수 변경 시 재시도 동작 변경
+- [x] Tests pass
 
 ### Step 4-4: Event Consumer에 복원력 패턴 통합
 **Objective:** Event Consumer에 Circuit Breaker, Rate Limiter, 재시도를 통합하고 SPEC §10.3 필수 로그를 검증.
