@@ -1,7 +1,8 @@
 /**
- * 구조화 JSON 로거.
+ * 구조화 JSON 로거 + Application Insights 연동.
  *
  * 모든 로그를 JSON 형식으로 stdout에 출력한다.
+ * Application Insights가 활성화되면 trackTrace/trackException으로 구조화 프로퍼티를 전송한다.
  * correlation_id는 AsyncLocalStorage에서 자동으로 가져와 포함한다.
  * 파일 로깅 금지 — 12-Factor XI: Logs.
  *
@@ -20,7 +21,17 @@ interface LogEntry {
   [key: string]: unknown;
 }
 
-function buildLogEntry(level: LogLevel, message: string, extra: Record<string, unknown>): string {
+// Application Insights TelemetryClient (null이면 미연동 상태)
+let _telemetryClient: import('applicationinsights').TelemetryClient | null = null;
+
+const AI_SEVERITY_MAP: Record<LogLevel, string> = {
+  DEBUG: 'Verbose',
+  INFO: 'Information',
+  WARNING: 'Warning',
+  ERROR: 'Error',
+};
+
+function buildLogEntry(level: LogLevel, message: string, extra: Record<string, unknown>): LogEntry {
   const entry: LogEntry = {
     timestamp: new Date().toISOString(),
     level,
@@ -28,19 +39,43 @@ function buildLogEntry(level: LogLevel, message: string, extra: Record<string, u
     message,
   };
 
-  // contextvars(AsyncLocalStorage)에서 추가 로그 필드 병합
   const logContext = getLogContext();
   Object.assign(entry, logContext);
-
-  // extra 필드 병합
   Object.assign(entry, extra);
 
-  // null/undefined 값 필드 제거
-  const cleaned = Object.fromEntries(
+  return entry;
+}
+
+function cleanEntry(entry: LogEntry): Record<string, unknown> {
+  return Object.fromEntries(
     Object.entries(entry).filter(([, v]) => v !== null && v !== undefined),
   );
+}
 
-  return JSON.stringify(cleaned);
+function trackToAppInsights(entry: LogEntry): void {
+  if (!_telemetryClient) return;
+
+  // 구조화 프로퍼티를 customDimensions로 전송
+  const properties: Record<string, string> = {};
+  for (const [key, value] of Object.entries(entry)) {
+    if (key !== 'message' && key !== 'timestamp' && key !== 'level' && value != null) {
+      properties[key] = String(value);
+    }
+  }
+
+  if (entry.level === 'ERROR') {
+    _telemetryClient.trackException({
+      exception: new Error(entry.message),
+      severity: AI_SEVERITY_MAP[entry.level],
+      properties,
+    });
+  } else {
+    _telemetryClient.trackTrace({
+      message: entry.message,
+      severity: AI_SEVERITY_MAP[entry.level],
+      properties,
+    });
+  }
 }
 
 export interface Logger {
@@ -53,16 +88,24 @@ export interface Logger {
 function createLogger(name: string): Logger {
   return {
     info(message: string, extra: Record<string, unknown> = {}): void {
-      process.stdout.write(buildLogEntry('INFO', message, { logger: name, ...extra }) + '\n');
+      const entry = buildLogEntry('INFO', message, { logger: name, ...extra });
+      console.log(JSON.stringify(cleanEntry(entry)));
+      trackToAppInsights(entry);
     },
     warn(message: string, extra: Record<string, unknown> = {}): void {
-      process.stdout.write(buildLogEntry('WARNING', message, { logger: name, ...extra }) + '\n');
+      const entry = buildLogEntry('WARNING', message, { logger: name, ...extra });
+      console.warn(JSON.stringify(cleanEntry(entry)));
+      trackToAppInsights(entry);
     },
     error(message: string, extra: Record<string, unknown> = {}): void {
-      process.stderr.write(buildLogEntry('ERROR', message, { logger: name, ...extra }) + '\n');
+      const entry = buildLogEntry('ERROR', message, { logger: name, ...extra });
+      console.error(JSON.stringify(cleanEntry(entry)));
+      trackToAppInsights(entry);
     },
     debug(message: string, extra: Record<string, unknown> = {}): void {
-      process.stdout.write(buildLogEntry('DEBUG', message, { logger: name, ...extra }) + '\n');
+      const entry = buildLogEntry('DEBUG', message, { logger: name, ...extra });
+      console.log(JSON.stringify(cleanEntry(entry)));
+      trackToAppInsights(entry);
     },
   };
 }
@@ -107,9 +150,25 @@ export function setupApplicationInsights(connectionString?: string): void {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const appInsights = require('applicationinsights') as typeof import('applicationinsights');
-    appInsights.setup(connectionString).setAutoCollectConsole(true).start();
+    appInsights
+      .setup(connectionString)
+      .setAutoCollectConsole(true, true)
+      .setAutoCollectExceptions(true)
+      .setAutoCollectRequests(true)
+      .setAutoCollectDependencies(true)
+      .start();
+
+    _telemetryClient = appInsights.defaultClient;
+
+    const logger = getLogger();
+    logger.info('Application Insights 연동 완료');
   } catch {
     const logger = getLogger();
-    logger.warn('applicationinsights 패키지를 로드할 수 없�� Application Insights 연동을 건너뜁니다');
+    logger.warn('Application Insights 연동 실패 - 로컬 stdout 로깅만 사용');
   }
+}
+
+/** 테스트용 - telemetry client 리셋 */
+export function _resetTelemetryClient(): void {
+  _telemetryClient = null;
 }
