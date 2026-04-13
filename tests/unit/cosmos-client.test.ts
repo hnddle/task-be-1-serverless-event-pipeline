@@ -87,6 +87,8 @@ function makeSettings(): Settings {
     RATE_LIMIT_MAX_WAIT_MS: 10000,
     MOCK_DELAY_MIN_MS: 100,
     MOCK_DELAY_MAX_MS: 500,
+    EVENT_GRID_TOPIC_ENDPOINT: 'https://test-topic.koreacentral-1.eventgrid.azure.net/api/events',
+    EVENT_GRID_TOPIC_KEY: 'test-key',
   };
 }
 
@@ -184,14 +186,14 @@ describe('컨테이너 참조 함수', () => {
 });
 
 describe('컨테이너 정의 상수', () => {
-  it('5개 컨테이너가 정의되어 있다', () => {
-    expect(CONTAINER_DEFINITIONS).toHaveLength(5);
+  it('6개 컨테이너가 정의되어 있다', () => {
+    expect(CONTAINER_DEFINITIONS).toHaveLength(6);
   });
 
   it('올바른 컨테이너 이름들이 정의되어 있다', () => {
     const names = new Set(CONTAINER_DEFINITIONS.map((d) => d.id));
     expect(names).toEqual(
-      new Set(['events', 'dead-letter-queue', 'circuit-breaker', 'rate-limiter', 'leases']),
+      new Set(['events', 'dead-letter-queue', 'circuit-breaker', 'rate-limiter', 'leases', 'logs']),
     );
   });
 
@@ -220,11 +222,21 @@ describe('컨테이너 정의 상수', () => {
     expect(rl.ttl).toBe(60);
   });
 
-  it('rate-limiter 이외 컨테이너는 TTL이 없다', () => {
-    const others = CONTAINER_DEFINITIONS.filter((d) => d.id !== 'rate-limiter');
+  it('rate-limiter, logs 이외 컨테이너는 TTL이 없다', () => {
+    const others = CONTAINER_DEFINITIONS.filter((d) => d.id !== 'rate-limiter' && d.id !== 'logs');
     for (const defn of others) {
       expect(defn.ttl).toBeNull();
     }
+  });
+
+  it('logs 컨테이너의 Partition Key가 /correlation_id이다', () => {
+    const logs = CONTAINER_DEFINITIONS.find((d) => d.id === 'logs')!;
+    expect(logs.partitionKey).toBe('/correlation_id');
+  });
+
+  it('logs 컨테이너의 TTL이 604800초(7일)이다', () => {
+    const logs = CONTAINER_DEFINITIONS.find((d) => d.id === 'logs')!;
+    expect(logs.ttl).toBe(604800);
   });
 
   it('events 컨테이너에 status, event_type, created_at 복합 인덱스가 있다', () => {
@@ -239,7 +251,7 @@ describe('컨테이너 정의 상수', () => {
 });
 
 describe('initContainers 함수', () => {
-  it('initContainers가 데이터베이스와 5개 컨테이너를 생성한다', async () => {
+  it('initContainers가 데이터베이스와 6개 컨테이너를 생성한다', async () => {
     const settings = makeSettings();
     await initContainers(settings);
 
@@ -248,7 +260,7 @@ describe('initContainers 함수', () => {
     });
 
     const db = cosmos.__mockClient.database();
-    expect(db.containers.createIfNotExists).toHaveBeenCalledTimes(5);
+    expect(db.containers.createIfNotExists).toHaveBeenCalledTimes(6);
   });
 });
 

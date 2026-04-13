@@ -35,6 +35,8 @@ export function makeIntegrationSettings(overrides: Partial<Settings> = {}): Sett
     RATE_LIMIT_SMS_PER_SEC: 5,
     RATE_LIMIT_WEBHOOK_PER_SEC: 20,
     RATE_LIMIT_MAX_WAIT_MS: 10000,
+    EVENT_GRID_TOPIC_ENDPOINT: 'https://test-topic.koreacentral-1.eventgrid.azure.net/api/events',
+    EVENT_GRID_TOPIC_KEY: 'test-key',
     ...overrides,
   };
 }

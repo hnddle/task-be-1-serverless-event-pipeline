@@ -26,7 +26,7 @@ async function main() {
   console.log(`Database: ${s.COSMOS_DB_DATABASE}`);
 
   await initContainers(s);
-  console.log('초기화 완료! 5개 컨테이너가 생성되었습니다.');
+  console.log('초기화 완료! 6개 컨테이너가 생성되었습니다.');
   closeClient();
 }
 

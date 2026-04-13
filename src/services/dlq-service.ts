@@ -59,9 +59,11 @@ export class DlqService {
 
     logWithContext(logger, 'ERROR', 'DLQ 이동', {
       event_id: params.originalEventId,
+      event_type: params.eventType,
       dlq_id: dlqId,
       channel: params.channel,
       provider: params.provider,
+      status: 'dlq',
       failure_reason: params.failureReason,
       total_retry_count: params.retryCount,
     });

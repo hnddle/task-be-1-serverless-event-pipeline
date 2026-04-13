@@ -12,6 +12,10 @@
     "COSMOS_DB_ENDPOINT": "https://localhost:8081",
     "COSMOS_DB_KEY": "<your-cosmos-db-key>",
     "COSMOS_DB_DATABASE": "notification-pipeline",
+    "CosmosDBConnection": "AccountEndpoint=https://localhost:8081/;AccountKey=<your-cosmos-db-key>;",
+
+    "EVENT_GRID_TOPIC_ENDPOINT": "https://<your-topic-name>.<region>.eventgrid.azure.net/api/events",
+    "EVENT_GRID_TOPIC_KEY": "<your-event-grid-key>",
 
     "CB_FAILURE_THRESHOLD": "5",
     "CB_COOLDOWN_MS": "30000",

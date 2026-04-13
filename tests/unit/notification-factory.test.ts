@@ -29,6 +29,8 @@ function makeSettings(overrides: Partial<Settings> = {}): Settings {
     RATE_LIMIT_MAX_WAIT_MS: 10000,
     MOCK_DELAY_MIN_MS: 10,
     MOCK_DELAY_MAX_MS: 20,
+    EVENT_GRID_TOPIC_ENDPOINT: 'https://test-topic.koreacentral-1.eventgrid.azure.net/api/events',
+    EVENT_GRID_TOPIC_KEY: 'test-key',
     ...overrides,
   };
 }

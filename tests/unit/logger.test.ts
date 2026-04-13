@@ -72,31 +72,36 @@ describe('Correlation ID 컨텍스트 관리', () => {
 });
 
 describe('JSON 구조화 로거 출력 형식', () => {
-  let stdoutSpy: jest.SpyInstance;
-  let stderrSpy: jest.SpyInstance;
+  let consoleSpy: jest.SpyInstance;
+  let consoleErrorSpy: jest.SpyInstance;
+  let consoleWarnSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    stdoutSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
-    stderrSpy = jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
-  function getLastStdoutLog(): Record<string, unknown> {
-    const calls = stdoutSpy.mock.calls;
-    const lastLine = calls[calls.length - 1][0] as string;
-    return JSON.parse(lastLine.trim());
+  function getLastConsoleLog(): Record<string, unknown> {
+    const calls = consoleSpy.mock.calls;
+    return JSON.parse(calls[calls.length - 1][0] as string);
   }
 
-  function getLastStderrLog(): Record<string, unknown> {
-    const calls = stderrSpy.mock.calls;
-    const lastLine = calls[calls.length - 1][0] as string;
-    return JSON.parse(lastLine.trim());
+  function getLastConsoleError(): Record<string, unknown> {
+    const calls = consoleErrorSpy.mock.calls;
+    return JSON.parse(calls[calls.length - 1][0] as string);
+  }
+
+  function getLastConsoleWarn(): Record<string, unknown> {
+    const calls = consoleWarnSpy.mock.calls;
+    return JSON.parse(calls[calls.length - 1][0] as string);
   }
 
   it('로그가 JSON 형식으로 출력된다', () => {
     runWithContext(() => {
       const logger = getLogger('test-json-output');
       logger.info('테스트 메시지');
-      const entry = getLastStdoutLog();
+      const entry = getLastConsoleLog();
       expect(entry.message).toBe('테스트 메시지');
       expect(entry.level).toBe('INFO');
       expect(entry).toHaveProperty('timestamp');
@@ -108,7 +113,7 @@ describe('JSON 구조화 로거 출력 형식', () => {
       setCorrelationId('cid-test-456');
       const logger = getLogger('test-cid-include');
       logger.info('상관관계 테스트');
-      const entry = getLastStdoutLog();
+      const entry = getLastConsoleLog();
       expect(entry.correlation_id).toBe('cid-test-456');
     });
   });
@@ -117,7 +122,7 @@ describe('JSON 구조화 로거 출력 형식', () => {
     runWithContext(() => {
       const logger = getLogger('test-cid-omit');
       logger.info('메시지');
-      const entry = getLastStdoutLog();
+      const entry = getLastConsoleLog();
       expect(entry).not.toHaveProperty('correlation_id');
     });
   });
@@ -127,7 +132,7 @@ describe('JSON 구조화 로거 출력 형식', () => {
       setLogContext({ event_id: 'evt-789', channel: 'webhook' });
       const logger = getLogger('test-ctx-fields');
       logger.info('컨텍스트 테스트');
-      const entry = getLastStdoutLog();
+      const entry = getLastConsoleLog();
       expect(entry.event_id).toBe('evt-789');
       expect(entry.channel).toBe('webhook');
     });
@@ -140,28 +145,28 @@ describe('JSON 구조화 로거 출력 형식', () => {
         duration_ms: 150,
         provider: 'sendgrid',
       });
-      const entry = getLastStdoutLog();
+      const entry = getLastConsoleLog();
       expect(entry.message).toBe('발송 완료');
       expect(entry.duration_ms).toBe(150);
       expect(entry.provider).toBe('sendgrid');
     });
   });
 
-  it('ERROR 레벨은 stderr에 출력된다', () => {
+  it('ERROR 레벨은 console.error로 출력된다', () => {
     runWithContext(() => {
       const logger = getLogger('test-error');
       logger.error('에러 발생');
-      const entry = getLastStderrLog();
+      const entry = getLastConsoleError();
       expect(entry.message).toBe('에러 발생');
       expect(entry.level).toBe('ERROR');
     });
   });
 
-  it('WARNING 레벨이 정확히 출력된다', () => {
+  it('WARNING 레벨은 console.warn으로 출력된다', () => {
     runWithContext(() => {
       const logger = getLogger('test-warn');
       logger.warn('경고 메시지');
-      const entry = getLastStdoutLog();
+      const entry = getLastConsoleWarn();
       expect(entry.level).toBe('WARNING');
     });
   });
@@ -169,23 +174,21 @@ describe('JSON 구조화 로거 출력 형식', () => {
 
 describe('getLogger 유틸리티', () => {
   it('name을 지정하면 하위 로거 이름이 반환된다', () => {
-    // getLogger는 내부적으로 notification-pipeline.{name} 형식을 사용
-    // 직접 로거 이름을 검증할 수 없으나 로그 출력에서 logger 필드를 확인
-    const stdoutSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
     const logger = getLogger('event-api');
     runWithContext(() => {
       logger.info('test');
-      const entry = JSON.parse((stdoutSpy.mock.calls[0][0] as string).trim());
+      const entry = JSON.parse(spy.mock.calls[0][0] as string);
       expect(entry.logger).toBe('notification-pipeline.event-api');
     });
   });
 
   it('name 없이 호출하면 기본 로거 이름을 사용한다', () => {
-    const stdoutSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
     const logger = getLogger();
     runWithContext(() => {
       logger.info('test');
-      const entry = JSON.parse((stdoutSpy.mock.calls[0][0] as string).trim());
+      const entry = JSON.parse(spy.mock.calls[0][0] as string);
       expect(entry.logger).toBe('notification-pipeline');
     });
   });

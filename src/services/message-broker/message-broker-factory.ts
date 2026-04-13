@@ -7,8 +7,11 @@
 
 import { AzureKeyCredential } from '@azure/eventgrid';
 import type { Settings } from '../../shared/config';
+import { getLogger } from '../../shared/logger';
 import { EventGridAdapter } from './event-grid-adapter';
 import type { MessageBroker } from './message-broker';
+
+const logger = getLogger('message-broker-factory');
 
 const SUPPORTED_BROKER_TYPES = new Set(['EVENT_GRID']);
 
@@ -17,9 +20,19 @@ export class MessageBrokerFactory {
     const brokerType = settings.QUEUE_SERVICE_TYPE.toUpperCase();
 
     if (brokerType === 'EVENT_GRID') {
-      const extSettings = settings as unknown as Record<string, string>;
-      const endpoint = extSettings.EVENT_GRID_ENDPOINT ?? '';
-      const key = extSettings.EVENT_GRID_KEY ?? '';
+      const endpoint = settings.EVENT_GRID_TOPIC_ENDPOINT;
+      const key = settings.EVENT_GRID_TOPIC_KEY;
+
+      if (!endpoint || !key) {
+        logger.error('EVENT_GRID_TOPIC_ENDPOINT 또는 EVENT_GRID_TOPIC_KEY 미설정', {
+          has_endpoint: !!endpoint,
+          has_key: !!key,
+        });
+        throw new Error(
+          'QUEUE_SERVICE_TYPE=EVENT_GRID이지만 EVENT_GRID_TOPIC_ENDPOINT/EVENT_GRID_TOPIC_KEY가 설정되지 않았습니다.',
+        );
+      }
+
       const credential = new AzureKeyCredential(key);
       return new EventGridAdapter(endpoint, credential);
     }

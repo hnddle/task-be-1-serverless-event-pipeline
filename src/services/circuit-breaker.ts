@@ -243,9 +243,13 @@ export class CircuitBreaker {
 }
 
 function logStateChange(circuitId: string, fromState: CircuitState, toState: CircuitState): void {
+  const [channel, provider] = circuitId.split(':');
   logWithContext(logger, 'WARNING', 'Circuit Breaker 상태 변경', {
     circuit_id: circuitId,
+    channel,
+    provider,
     from_state: fromState,
     to_state: toState,
+    status: toState,
   });
 }
