@@ -383,14 +383,14 @@ Cosmos DB 클라이언트, 입력 검증, Message Broker 추상화, Notification
 - 환경 변수: `CB_FAILURE_THRESHOLD`, `CB_COOLDOWN_MS`, `CB_SUCCESS_THRESHOLD`
 - 상태 변경 시 `from_state`, `to_state` 포함 구조화 로그
 **Acceptance Criteria:**
-- [ ] 연속 실패 >= CB_FAILURE_THRESHOLD → Open 전환
-- [ ] Open 상태에서 CB_COOLDOWN_MS 경과 → Half-Open 전환
-- [ ] Half-Open에서 CB_SUCCESS_THRESHOLD 연속 성공 → Closed 복귀
-- [ ] Half-Open에서 1회 실패 → Open 재전환
-- [ ] Open 상태 요청 → 외부 호출 없이 즉시 실패
-- [ ] 상태 변경 시 구조화 로그 출력
-- [ ] ETag 충돌 시 안전하게 재시도
-- [ ] Tests pass
+- [x] 연속 실패 >= CB_FAILURE_THRESHOLD → Open 전환
+- [x] Open 상태에서 CB_COOLDOWN_MS 경과 → Half-Open 전환
+- [x] Half-Open에서 CB_SUCCESS_THRESHOLD 연속 성공 → Closed 복귀
+- [x] Half-Open에서 1회 실패 → Open 재전환
+- [x] Open 상태 요청 → 외부 호출 없이 즉시 실패
+- [x] 상태 변경 시 구조화 로그 출력
+- [x] ETag 충돌 시 안전하게 재시도
+- [x] Tests pass
 
 ### Step 4-2: Rate Limiter 구현 (Token Bucket)
 **Objective:** Token Bucket 알고리즘 기반 Rate Limiter 구현.
