@@ -409,13 +409,13 @@ Cosmos DB 클라이언트, 입력 검증, Message Broker 추상화, Notification
 - 429의 Retry-After 헤더 준수
 - ETag 기반 낙관적 동시성 제어
 **Acceptance Criteria:**
-- [ ] 초당 발송량이 설정 한도 초과하지 않음
-- [ ] 토큰 부족 시 RATE_LIMIT_MAX_WAIT_MS 이내 대기 후 재시도
-- [ ] 대기 초과 시 실패 처리
-- [ ] 429 → Circuit Breaker 미포함
-- [ ] 429 Retry-After 준수
-- [ ] ETag 기반 정합성 유지
-- [ ] Tests pass
+- [x] 초당 발송량이 설정 한도 초과하지 않음
+- [x] 토큰 부족 시 RATE_LIMIT_MAX_WAIT_MS 이내 대기 후 재시도
+- [x] 대기 초과 시 실패 처리
+- [x] 429 → Circuit Breaker 미포함
+- [x] 429 Retry-After 준수
+- [x] ETag 기반 정합성 유지
+- [x] Tests pass
 
 ### Step 4-3: 재시도 서비스 (지수 백오프)
 **Objective:** 알림 발송 실패 시 지수 백오프 재시도 로직 구현.
