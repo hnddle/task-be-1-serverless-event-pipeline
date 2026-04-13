@@ -63,6 +63,23 @@ export const CONTAINER_DEFINITIONS: ContainerDefinition[] = [
     ttl: null,
     indexingPolicy: null,
   },
+  {
+    id: 'logs',
+    partitionKey: '/correlation_id',
+    ttl: 604800, // 7일 자동 만료
+    indexingPolicy: {
+      automatic: true,
+      indexingMode: 'consistent',
+      includedPaths: [{ path: '/*' }],
+      excludedPaths: [{ path: '/"_etag"/?' }],
+      compositeIndexes: [
+        [
+          { path: '/correlation_id', order: 'ascending' },
+          { path: '/timestamp', order: 'descending' },
+        ],
+      ],
+    },
+  },
 ];
 
 let _client: CosmosClient | null = null;
@@ -118,6 +135,10 @@ export function getRateLimiterContainer(settings: Settings): Container {
 
 export function getLeasesContainer(settings: Settings): Container {
   return getContainer(settings, 'leases');
+}
+
+export function getLogsContainer(settings: Settings): Container {
+  return getContainer(settings, 'logs');
 }
 
 export async function initContainers(settings: Settings): Promise<void> {

@@ -166,6 +166,6 @@ npx tsc --noEmit                      # 타입 체크
 
 - 문서 기본 언어: 한국어
 - 서비스 언어: 한국어 전용
-- Cosmos DB 컨테이너 5개: `events`, `dead-letter-queue`, `circuit-breaker`, `rate-limiter`, `leases`
+- Cosmos DB 컨테이너 6개: `events`, `dead-letter-queue`, `circuit-breaker`, `rate-limiter`, `leases`, `logs`
 - 환경 변수 전체 목록: SPEC.md §11 참조, 템플릿: `local.settings.sample.json`
 - Python에서 Node.js/TypeScript로 마이그레이션 완료 (Azure Functions 무료 구독 Windows 호환)

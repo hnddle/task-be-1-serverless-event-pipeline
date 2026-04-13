@@ -9,6 +9,7 @@
  * SPEC.md §10.2 참조.
  */
 
+import { persistLog } from '../services/log-store';
 import { getCorrelationId, getLogContext } from './correlation';
 
 export type LogLevel = 'INFO' | 'WARNING' | 'ERROR' | 'DEBUG';
@@ -89,23 +90,31 @@ function createLogger(name: string): Logger {
   return {
     info(message: string, extra: Record<string, unknown> = {}): void {
       const entry = buildLogEntry('INFO', message, { logger: name, ...extra });
-      console.log(JSON.stringify(cleanEntry(entry)));
+      const cleaned = cleanEntry(entry);
+      console.log(JSON.stringify(cleaned));
       trackToAppInsights(entry);
+      persistLog(cleaned);
     },
     warn(message: string, extra: Record<string, unknown> = {}): void {
       const entry = buildLogEntry('WARNING', message, { logger: name, ...extra });
-      console.warn(JSON.stringify(cleanEntry(entry)));
+      const cleaned = cleanEntry(entry);
+      console.warn(JSON.stringify(cleaned));
       trackToAppInsights(entry);
+      persistLog(cleaned);
     },
     error(message: string, extra: Record<string, unknown> = {}): void {
       const entry = buildLogEntry('ERROR', message, { logger: name, ...extra });
-      console.error(JSON.stringify(cleanEntry(entry)));
+      const cleaned = cleanEntry(entry);
+      console.error(JSON.stringify(cleaned));
       trackToAppInsights(entry);
+      persistLog(cleaned);
     },
     debug(message: string, extra: Record<string, unknown> = {}): void {
       const entry = buildLogEntry('DEBUG', message, { logger: name, ...extra });
-      console.log(JSON.stringify(cleanEntry(entry)));
+      const cleaned = cleanEntry(entry);
+      console.log(JSON.stringify(cleaned));
       trackToAppInsights(entry);
+      persistLog(cleaned);
     },
   };
 }
