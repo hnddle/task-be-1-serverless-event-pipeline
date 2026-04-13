@@ -257,11 +257,11 @@ Cosmos DB 클라이언트, 입력 검증, Message Broker 추상화, Notification
 - 지원하지 않는 채널 → `failed` 처리 + 에러 로그
 - provider 필드는 `NOTIFICATION_EMAIL_PROVIDER`, `NOTIFICATION_SMS_PROVIDER` 환경 변수에서 결정 (webhook은 고정 `"webhook"`)
 **Acceptance Criteria:**
-- [ ] 3개 채널 전달 시 3개 Strategy 각각 실행
-- [ ] 지원하지 않는 채널 → failed 처리 + 에러 로그
-- [ ] Mock 딜레이가 환경 변수 범위 내
-- [ ] Mock 결과가 구조화 로그로 출력
-- [ ] Tests pass
+- [x] 3개 채널 전달 시 3개 Strategy 각각 실행
+- [x] 지원하지 않는 채널 → failed 처리 + 에러 로그
+- [x] Mock 딜레이가 환경 변수 범위 내
+- [x] Mock 결과가 구조화 로그로 출력
+- [x] Tests pass
 
 ---
 
