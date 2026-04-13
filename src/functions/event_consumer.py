@@ -2,6 +2,7 @@
 
 Event Grid 트리거로 이벤트를 수신하여 채널별 알림을 발송하고
 결과를 Cosmos DB에 기록한다.
+복원력 패턴: Circuit Breaker → Rate Limiter → Strategy.send() → 재시도.
 
 SPEC.md §9 (Event Consumer) 참조.
 """
@@ -14,8 +15,11 @@ from typing import Any
 
 import azure.functions as func
 
+from src.services.circuit_breaker import CircuitBreaker, CircuitOpenError
 from src.services.cosmos_client import get_events_container
 from src.services.notification.notification_factory import NotificationFactory
+from src.services.rate_limiter import RateLimiter, RateLimitExceededError
+from src.services.retry_service import MaxRetryExceededError, RetryService
 from src.shared.config import load_settings
 from src.shared.correlation import clear_context, set_correlation_id, set_log_context
 from src.shared.logger import log_with_context
@@ -51,6 +55,107 @@ def _determine_final_status(notifications: list[dict[str, Any]]) -> str:
     return "failed"
 
 
+async def _send_with_resilience(
+    channel: str,
+    provider: str,
+    notification_data: dict[str, Any],
+    *,
+    circuit_breaker: CircuitBreaker,
+    rate_limiter: RateLimiter,
+    retry_service: RetryService,
+    factory: NotificationFactory,
+) -> dict[str, Any]:
+    """복원력 패턴을 적용하여 알림을 발송한다.
+
+    흐름: Circuit Breaker 확인 → Rate Limiter → Strategy.send() → 재시도.
+
+    Returns:
+        {"success": bool, "provider": str, "message": str, "duration_ms": float}
+    """
+    # 1. Circuit Breaker 확인
+    try:
+        await circuit_breaker.check_state(channel, provider)
+    except CircuitOpenError:
+        log_with_context(
+            logger,
+            logging.WARNING,
+            "Circuit Breaker Open — 즉시 실패",
+            channel=channel,
+            provider=provider,
+        )
+        return {
+            "success": False,
+            "provider": provider,
+            "message": f"Circuit open: {channel}:{provider}",
+            "duration_ms": 0.0,
+            "circuit_open": True,
+        }
+
+    # 2. Rate Limiter + Strategy.send() + 재시도
+    async def _attempt_send() -> dict[str, Any]:
+        # Rate Limiter
+        try:
+            await rate_limiter.acquire(channel, provider)
+        except RateLimitExceededError:
+            log_with_context(
+                logger,
+                logging.WARNING,
+                "Rate limit 대기 초과",
+                channel=channel,
+                provider=provider,
+            )
+            raise
+
+        # Strategy 호출
+        log_with_context(
+            logger,
+            logging.INFO,
+            "채널 발송 시작",
+            channel=channel,
+            provider=provider,
+        )
+
+        result = await factory.send_notification(channel, notification_data)
+
+        if not result.success:
+            raise RuntimeError(result.message)
+
+        return {
+            "success": True,
+            "provider": result.provider,
+            "message": "",
+            "duration_ms": result.duration_ms,
+        }
+
+    try:
+        send_result = await retry_service.execute_with_retry(
+            _attempt_send,
+            context={"channel": channel, "provider": provider},
+        )
+        # 성공 → Circuit Breaker 성공 기록
+        await circuit_breaker.record_success(channel, provider)
+        result: dict[str, Any] = send_result
+        return result
+    except MaxRetryExceededError as e:
+        # 재시도 초과 → Circuit Breaker 실패 기록
+        await circuit_breaker.record_failure(channel, provider)
+        return {
+            "success": False,
+            "provider": provider,
+            "message": e.last_error,
+            "duration_ms": 0.0,
+            "retry_count": e.retry_count,
+        }
+    except RateLimitExceededError:
+        # Rate limit 초과 → Circuit Breaker에 미포함
+        return {
+            "success": False,
+            "provider": provider,
+            "message": f"Rate limit exceeded: {channel}:{provider}",
+            "duration_ms": 0.0,
+        }
+
+
 @bp.event_grid_trigger(arg_name="event")
 async def event_consumer(event: func.EventGridEvent) -> None:
     """Event Grid Trigger — 이벤트를 수신하여 채널별 알림을 발송한다.
@@ -59,7 +164,7 @@ async def event_consumer(event: func.EventGridEvent) -> None:
     1. correlation_id 컨텍스트 바인딩
     2. Cosmos DB에서 이벤트 조회 (Idempotency)
     3. status → processing 갱신
-    4. channels 순회: success 스킵 → Strategy.send()
+    4. channels 순회: Circuit Breaker → Rate Limiter → send → 재시도
     5. 결과 집계 → Cosmos DB 기록
     """
     event_data: dict[str, Any] = event.get_json()
@@ -79,6 +184,9 @@ async def event_consumer(event: func.EventGridEvent) -> None:
     settings = _get_settings()
     container = get_events_container(settings)
     factory = NotificationFactory(settings)
+    circuit_breaker = CircuitBreaker(settings)
+    rate_limiter = RateLimiter(settings)
+    retry_service = RetryService(settings)
 
     # 2. Cosmos DB에서 이벤트 조회
     try:
@@ -113,6 +221,7 @@ async def event_consumer(event: func.EventGridEvent) -> None:
     # 4. channels 순회
     for notification in notifications:
         channel: str = notification.get("channel", "")
+        provider: str = notification.get("provider", "")
 
         # 이미 success인 채널 스킵 (멱등성)
         if notification.get("status") == "success":
@@ -126,20 +235,24 @@ async def event_consumer(event: func.EventGridEvent) -> None:
 
         set_log_context(event_id=event_id, clinic_id=clinic_id, channel=channel)
 
-        # Strategy 호출
-        result = await factory.send_notification(
+        send_result = await _send_with_resilience(
             channel,
+            provider,
             {
                 "event_id": event_id,
                 "clinic_id": clinic_id,
                 "channel": channel,
-                "provider": notification.get("provider", ""),
+                "provider": provider,
             },
+            circuit_breaker=circuit_breaker,
+            rate_limiter=rate_limiter,
+            retry_service=retry_service,
+            factory=factory,
         )
 
         now = datetime.now(UTC).isoformat()
 
-        if result.success:
+        if send_result["success"]:
             notification["status"] = "success"
             notification["sent_at"] = now
             log_with_context(
@@ -147,19 +260,20 @@ async def event_consumer(event: func.EventGridEvent) -> None:
                 logging.INFO,
                 "알림 발송 성공",
                 channel=channel,
-                provider=result.provider,
-                duration_ms=result.duration_ms,
+                provider=send_result["provider"],
+                duration_ms=send_result["duration_ms"],
             )
         else:
             notification["status"] = "failed"
-            notification["last_error"] = result.message
+            notification["last_error"] = send_result["message"]
+            notification["retry_count"] = send_result.get("retry_count", 0)
             log_with_context(
                 logger,
                 logging.WARNING,
                 "알림 발송 실패",
                 channel=channel,
-                provider=result.provider,
-                error=result.message,
+                provider=send_result["provider"],
+                error=send_result["message"],
             )
 
     # 5. 결과 집계 및 Cosmos DB 기록
