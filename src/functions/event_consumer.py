@@ -17,6 +17,7 @@ import azure.functions as func
 
 from src.services.circuit_breaker import CircuitBreaker, CircuitOpenError
 from src.services.cosmos_client import get_events_container
+from src.services.dlq_service import DlqService
 from src.services.notification.notification_factory import NotificationFactory
 from src.services.rate_limiter import RateLimiter, RateLimitExceededError
 from src.services.retry_service import MaxRetryExceededError, RetryService
@@ -187,6 +188,7 @@ async def event_consumer(event: func.EventGridEvent) -> None:
     circuit_breaker = CircuitBreaker(settings)
     rate_limiter = RateLimiter(settings)
     retry_service = RetryService(settings)
+    dlq_service = DlqService(settings)
 
     # 2. Cosmos DB에서 이벤트 조회
     try:
@@ -275,6 +277,20 @@ async def event_consumer(event: func.EventGridEvent) -> None:
                 provider=send_result["provider"],
                 error=send_result["message"],
             )
+
+            # 최대 재시도 초과 시 DLQ로 이동
+            if send_result.get("retry_count", 0) > 0 or send_result.get("circuit_open"):
+                await dlq_service.send_to_dlq(
+                    original_event_id=event_id,
+                    clinic_id=clinic_id,
+                    channel=channel,
+                    provider=provider,
+                    event_type=doc.get("event_type", ""),
+                    patient_id=doc.get("patient_id", ""),
+                    payload=doc,
+                    failure_reason=send_result["message"],
+                    retry_count=send_result.get("retry_count", 0),
+                )
 
     # 5. 결과 집계 및 Cosmos DB 기록
     final_status = _determine_final_status(notifications)

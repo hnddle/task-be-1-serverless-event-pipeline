@@ -41,16 +41,18 @@ _PATCHES = [
     "src.functions.event_consumer.CircuitBreaker",
     "src.functions.event_consumer.RateLimiter",
     "src.functions.event_consumer.RetryService",
+    "src.functions.event_consumer.DlqService",
 ]
 
 
 def _setup_mocks(
+    mock_dlq_cls: MagicMock,
     mock_retry_cls: MagicMock,
     mock_rl_cls: MagicMock,
     mock_cb_cls: MagicMock,
     mock_factory_cls: MagicMock,
     mock_container_fn: MagicMock,
-) -> tuple[AsyncMock, MagicMock, MagicMock, MagicMock, MagicMock]:
+) -> tuple[AsyncMock, MagicMock, MagicMock, MagicMock, MagicMock, AsyncMock]:
     """공통 mock 설정을 수행한다."""
     mock_container = AsyncMock()
     mock_container_fn.return_value = mock_container
@@ -67,7 +69,10 @@ def _setup_mocks(
     mock_retry = MagicMock()
     mock_retry_cls.return_value = mock_retry
 
-    return mock_container, mock_factory, mock_cb, mock_rl, mock_retry
+    mock_dlq = AsyncMock()
+    mock_dlq_cls.return_value = mock_dlq
+
+    return mock_container, mock_factory, mock_cb, mock_rl, mock_retry, mock_dlq
 
 
 class TestDetermineFinalStatus:
@@ -99,8 +104,10 @@ class TestEventConsumer:
     @patch(*_PATCHES[3:4])  # CircuitBreaker
     @patch(*_PATCHES[4:5])  # RateLimiter
     @patch(*_PATCHES[5:6])  # RetryService
+    @patch(*_PATCHES[6:7])  # DlqService
     async def test_all_channels_success_sets_completed(
         self,
+        mock_dlq_cls: MagicMock,
         mock_retry_cls: MagicMock,
         mock_rl_cls: MagicMock,
         mock_cb_cls: MagicMock,
@@ -109,8 +116,8 @@ class TestEventConsumer:
         mock_settings: MagicMock,
     ) -> None:
         """전체 채널 성공 시 completed로 갱신된다."""
-        mock_container, mock_factory, _mock_cb, _mock_rl, mock_retry = _setup_mocks(
-            mock_retry_cls, mock_rl_cls, mock_cb_cls, mock_factory_cls, mock_container_fn
+        mock_container, mock_factory, _mock_cb, _mock_rl, mock_retry, _mock_dlq = _setup_mocks(
+            mock_dlq_cls, mock_retry_cls, mock_rl_cls, mock_cb_cls, mock_factory_cls, mock_container_fn
         )
         mock_container.read_item.return_value = {
             "id": "evt-001",
@@ -124,7 +131,6 @@ class TestEventConsumer:
         mock_factory.send_notification = AsyncMock(
             return_value=NotificationResult(success=True, channel="email", provider="sendgrid", duration_ms=50.0)
         )
-        # RetryService.execute_with_retry는 fn을 호출 → 성공 결과 반환
         mock_retry.execute_with_retry = AsyncMock(
             return_value={"success": True, "provider": "sendgrid", "message": "", "duration_ms": 50.0}
         )
@@ -143,8 +149,10 @@ class TestEventConsumer:
     @patch(*_PATCHES[3:4])
     @patch(*_PATCHES[4:5])
     @patch(*_PATCHES[5:6])
-    async def test_circuit_open_sets_failed(
+    @patch(*_PATCHES[6:7])
+    async def test_circuit_open_sets_failed_and_sends_to_dlq(
         self,
+        mock_dlq_cls: MagicMock,
         mock_retry_cls: MagicMock,
         mock_rl_cls: MagicMock,
         mock_cb_cls: MagicMock,
@@ -152,14 +160,16 @@ class TestEventConsumer:
         mock_container_fn: MagicMock,
         mock_settings: MagicMock,
     ) -> None:
-        """Circuit Open → 즉시 실패."""
-        mock_container, _mock_factory, mock_cb, _mock_rl, mock_retry = _setup_mocks(
-            mock_retry_cls, mock_rl_cls, mock_cb_cls, mock_factory_cls, mock_container_fn
+        """Circuit Open → 즉시 실패 + DLQ 이동."""
+        mock_container, _mock_factory, mock_cb, _mock_rl, mock_retry, mock_dlq = _setup_mocks(
+            mock_dlq_cls, mock_retry_cls, mock_rl_cls, mock_cb_cls, mock_factory_cls, mock_container_fn
         )
         mock_container.read_item.return_value = {
             "id": "evt-001",
             "clinic_id": "CLINIC_123",
             "status": "queued",
+            "event_type": "appointment_confirmed",
+            "patient_id": "P-001",
             "notifications": [
                 {"channel": "email", "provider": "sendgrid", "status": "pending"},
             ],
@@ -168,8 +178,12 @@ class TestEventConsumer:
 
         await event_consumer(_make_event_grid_event())
 
-        # 발송 시도 없음
         mock_retry.execute_with_retry.assert_not_called()
+        # DLQ에 저장
+        mock_dlq.send_to_dlq.assert_awaited_once()
+        dlq_call = mock_dlq.send_to_dlq.call_args.kwargs
+        assert dlq_call["channel"] == "email"
+        assert dlq_call["provider"] == "sendgrid"
         # 최종 상태: failed
         final_call = mock_container.patch_item.call_args_list[-1]
         ops = final_call.kwargs["patch_operations"]
@@ -183,8 +197,10 @@ class TestEventConsumer:
     @patch(*_PATCHES[3:4])
     @patch(*_PATCHES[4:5])
     @patch(*_PATCHES[5:6])
-    async def test_rate_limit_exceeded_sets_failed(
+    @patch(*_PATCHES[6:7])
+    async def test_rate_limit_exceeded_sets_failed_no_dlq(
         self,
+        mock_dlq_cls: MagicMock,
         mock_retry_cls: MagicMock,
         mock_rl_cls: MagicMock,
         mock_cb_cls: MagicMock,
@@ -192,9 +208,9 @@ class TestEventConsumer:
         mock_container_fn: MagicMock,
         mock_settings: MagicMock,
     ) -> None:
-        """Rate Limit 초과 → 실패 (Circuit Breaker 미포함)."""
-        mock_container, _mock_factory, mock_cb, _mock_rl, mock_retry = _setup_mocks(
-            mock_retry_cls, mock_rl_cls, mock_cb_cls, mock_factory_cls, mock_container_fn
+        """Rate Limit 초과 → 실패 (DLQ 미이동, Circuit Breaker 미포함)."""
+        mock_container, _mock_factory, mock_cb, _mock_rl, mock_retry, mock_dlq = _setup_mocks(
+            mock_dlq_cls, mock_retry_cls, mock_rl_cls, mock_cb_cls, mock_factory_cls, mock_container_fn
         )
         mock_container.read_item.return_value = {
             "id": "evt-001",
@@ -208,8 +224,8 @@ class TestEventConsumer:
 
         await event_consumer(_make_event_grid_event())
 
-        # Circuit Breaker 실패 기록 안 함
         mock_cb.record_failure.assert_not_awaited()
+        mock_dlq.send_to_dlq.assert_not_awaited()
         final_call = mock_container.patch_item.call_args_list[-1]
         ops = final_call.kwargs["patch_operations"]
         status_op = next(op for op in ops if op["path"] == "/status")
@@ -222,8 +238,10 @@ class TestEventConsumer:
     @patch(*_PATCHES[3:4])
     @patch(*_PATCHES[4:5])
     @patch(*_PATCHES[5:6])
-    async def test_max_retry_exceeded_records_cb_failure(
+    @patch(*_PATCHES[6:7])
+    async def test_max_retry_exceeded_records_cb_failure_and_sends_to_dlq(
         self,
+        mock_dlq_cls: MagicMock,
         mock_retry_cls: MagicMock,
         mock_rl_cls: MagicMock,
         mock_cb_cls: MagicMock,
@@ -231,14 +249,16 @@ class TestEventConsumer:
         mock_container_fn: MagicMock,
         mock_settings: MagicMock,
     ) -> None:
-        """재시도 초과 → Circuit Breaker 실패 기록."""
-        mock_container, _mock_factory, mock_cb, _mock_rl, mock_retry = _setup_mocks(
-            mock_retry_cls, mock_rl_cls, mock_cb_cls, mock_factory_cls, mock_container_fn
+        """재시도 초과 → Circuit Breaker 실패 기록 + DLQ 이동."""
+        mock_container, _mock_factory, mock_cb, _mock_rl, mock_retry, mock_dlq = _setup_mocks(
+            mock_dlq_cls, mock_retry_cls, mock_rl_cls, mock_cb_cls, mock_factory_cls, mock_container_fn
         )
         mock_container.read_item.return_value = {
             "id": "evt-001",
             "clinic_id": "CLINIC_123",
             "status": "queued",
+            "event_type": "claim_completed",
+            "patient_id": "P-002",
             "notifications": [
                 {"channel": "email", "provider": "sendgrid", "status": "pending"},
             ],
@@ -250,6 +270,14 @@ class TestEventConsumer:
         await event_consumer(_make_event_grid_event())
 
         mock_cb.record_failure.assert_awaited_once_with("email", "sendgrid")
+        # DLQ에 저장
+        mock_dlq.send_to_dlq.assert_awaited_once()
+        dlq_call = mock_dlq.send_to_dlq.call_args.kwargs
+        assert dlq_call["original_event_id"] == "evt-001"
+        assert dlq_call["clinic_id"] == "CLINIC_123"
+        assert dlq_call["channel"] == "email"
+        assert dlq_call["failure_reason"] == "Timeout"
+        assert dlq_call["retry_count"] == 3
 
     @pytest.mark.asyncio()
     @patch(*_PATCHES[:1])
@@ -258,8 +286,10 @@ class TestEventConsumer:
     @patch(*_PATCHES[3:4])
     @patch(*_PATCHES[4:5])
     @patch(*_PATCHES[5:6])
+    @patch(*_PATCHES[6:7])
     async def test_success_records_cb_success(
         self,
+        mock_dlq_cls: MagicMock,
         mock_retry_cls: MagicMock,
         mock_rl_cls: MagicMock,
         mock_cb_cls: MagicMock,
@@ -268,8 +298,8 @@ class TestEventConsumer:
         mock_settings: MagicMock,
     ) -> None:
         """발송 성공 → Circuit Breaker 성공 기록."""
-        mock_container, _mock_factory, mock_cb, _mock_rl, mock_retry = _setup_mocks(
-            mock_retry_cls, mock_rl_cls, mock_cb_cls, mock_factory_cls, mock_container_fn
+        mock_container, _mock_factory, mock_cb, _mock_rl, mock_retry, _mock_dlq = _setup_mocks(
+            mock_dlq_cls, mock_retry_cls, mock_rl_cls, mock_cb_cls, mock_factory_cls, mock_container_fn
         )
         mock_container.read_item.return_value = {
             "id": "evt-001",
@@ -294,8 +324,10 @@ class TestEventConsumer:
     @patch(*_PATCHES[3:4])
     @patch(*_PATCHES[4:5])
     @patch(*_PATCHES[5:6])
+    @patch(*_PATCHES[6:7])
     async def test_already_success_channel_is_skipped(
         self,
+        mock_dlq_cls: MagicMock,
         mock_retry_cls: MagicMock,
         mock_rl_cls: MagicMock,
         mock_cb_cls: MagicMock,
@@ -304,8 +336,8 @@ class TestEventConsumer:
         mock_settings: MagicMock,
     ) -> None:
         """이미 success인 채널은 재발송하지 않는다."""
-        mock_container, _mock_factory, mock_cb, _mock_rl, mock_retry = _setup_mocks(
-            mock_retry_cls, mock_rl_cls, mock_cb_cls, mock_factory_cls, mock_container_fn
+        mock_container, _mock_factory, mock_cb, _mock_rl, mock_retry, _mock_dlq = _setup_mocks(
+            mock_dlq_cls, mock_retry_cls, mock_rl_cls, mock_cb_cls, mock_factory_cls, mock_container_fn
         )
         mock_container.read_item.return_value = {
             "id": "evt-001",
@@ -322,7 +354,6 @@ class TestEventConsumer:
 
         await event_consumer(_make_event_grid_event())
 
-        # CB check는 sms만 (email은 스킵)
         mock_cb.check_state.assert_awaited_once_with("sms", "twilio")
 
     @pytest.mark.asyncio()
@@ -332,8 +363,10 @@ class TestEventConsumer:
     @patch(*_PATCHES[3:4])
     @patch(*_PATCHES[4:5])
     @patch(*_PATCHES[5:6])
+    @patch(*_PATCHES[6:7])
     async def test_already_completed_event_is_skipped(
         self,
+        mock_dlq_cls: MagicMock,
         mock_retry_cls: MagicMock,
         mock_rl_cls: MagicMock,
         mock_cb_cls: MagicMock,
@@ -342,7 +375,9 @@ class TestEventConsumer:
         mock_settings: MagicMock,
     ) -> None:
         """이미 완료된 이벤트는 재처리하지 않는다."""
-        mock_container, *_ = _setup_mocks(mock_retry_cls, mock_rl_cls, mock_cb_cls, mock_factory_cls, mock_container_fn)
+        mock_container, *_ = _setup_mocks(
+            mock_dlq_cls, mock_retry_cls, mock_rl_cls, mock_cb_cls, mock_factory_cls, mock_container_fn
+        )
         mock_container.read_item.return_value = {
             "id": "evt-001",
             "clinic_id": "CLINIC_123",
@@ -361,8 +396,10 @@ class TestEventConsumer:
     @patch(*_PATCHES[3:4])
     @patch(*_PATCHES[4:5])
     @patch(*_PATCHES[5:6])
+    @patch(*_PATCHES[6:7])
     async def test_event_read_failure_returns_early(
         self,
+        mock_dlq_cls: MagicMock,
         mock_retry_cls: MagicMock,
         mock_rl_cls: MagicMock,
         mock_cb_cls: MagicMock,
@@ -371,7 +408,9 @@ class TestEventConsumer:
         mock_settings: MagicMock,
     ) -> None:
         """이벤트 조회 실패 시 조기 리턴."""
-        mock_container, *_ = _setup_mocks(mock_retry_cls, mock_rl_cls, mock_cb_cls, mock_factory_cls, mock_container_fn)
+        mock_container, *_ = _setup_mocks(
+            mock_dlq_cls, mock_retry_cls, mock_rl_cls, mock_cb_cls, mock_factory_cls, mock_container_fn
+        )
         mock_container.read_item.side_effect = RuntimeError("DB unavailable")
 
         await event_consumer(_make_event_grid_event())
@@ -385,8 +424,10 @@ class TestEventConsumer:
     @patch(*_PATCHES[3:4])
     @patch(*_PATCHES[4:5])
     @patch(*_PATCHES[5:6])
+    @patch(*_PATCHES[6:7])
     async def test_processing_status_set_before_sending(
         self,
+        mock_dlq_cls: MagicMock,
         mock_retry_cls: MagicMock,
         mock_rl_cls: MagicMock,
         mock_cb_cls: MagicMock,
@@ -395,8 +436,8 @@ class TestEventConsumer:
         mock_settings: MagicMock,
     ) -> None:
         """발송 전 status가 processing으로 갱신된다."""
-        mock_container, _mock_factory, _mock_cb, _mock_rl, mock_retry = _setup_mocks(
-            mock_retry_cls, mock_rl_cls, mock_cb_cls, mock_factory_cls, mock_container_fn
+        mock_container, _mock_factory, _mock_cb, _mock_rl, mock_retry, _mock_dlq = _setup_mocks(
+            mock_dlq_cls, mock_retry_cls, mock_rl_cls, mock_cb_cls, mock_factory_cls, mock_container_fn
         )
         mock_container.read_item.return_value = {
             "id": "evt-001",
@@ -414,3 +455,108 @@ class TestEventConsumer:
         ops = first_call.kwargs["patch_operations"]
         status_op = next(op for op in ops if op["path"] == "/status")
         assert status_op["value"] == "processing"
+
+    @pytest.mark.asyncio()
+    @patch(*_PATCHES[:1])
+    @patch(*_PATCHES[1:2])
+    @patch(*_PATCHES[2:3])
+    @patch(*_PATCHES[3:4])
+    @patch(*_PATCHES[4:5])
+    @patch(*_PATCHES[5:6])
+    @patch(*_PATCHES[6:7])
+    async def test_partial_success_sends_failed_to_dlq(
+        self,
+        mock_dlq_cls: MagicMock,
+        mock_retry_cls: MagicMock,
+        mock_rl_cls: MagicMock,
+        mock_cb_cls: MagicMock,
+        mock_factory_cls: MagicMock,
+        mock_container_fn: MagicMock,
+        mock_settings: MagicMock,
+    ) -> None:
+        """2/3 성공, 1/3 실패 → partially_completed + DLQ 1건."""
+        mock_container, _mock_factory, _mock_cb, _mock_rl, mock_retry, mock_dlq = _setup_mocks(
+            mock_dlq_cls, mock_retry_cls, mock_rl_cls, mock_cb_cls, mock_factory_cls, mock_container_fn
+        )
+        mock_container.read_item.return_value = {
+            "id": "evt-001",
+            "clinic_id": "CLINIC_123",
+            "status": "queued",
+            "event_type": "appointment_confirmed",
+            "patient_id": "P-001",
+            "notifications": [
+                {"channel": "email", "provider": "sendgrid", "status": "pending"},
+                {"channel": "sms", "provider": "twilio", "status": "pending"},
+                {"channel": "webhook", "provider": "webhook", "status": "pending"},
+            ],
+        }
+        # email 성공, sms 실패(재시도 초과), webhook 성공
+        mock_retry.execute_with_retry = AsyncMock(
+            side_effect=[
+                {"success": True, "provider": "sendgrid", "message": "", "duration_ms": 50.0},
+                MaxRetryExceededError(retry_count=3, last_error="SMS gateway down"),
+                {"success": True, "provider": "webhook", "message": "", "duration_ms": 30.0},
+            ]
+        )
+
+        await event_consumer(_make_event_grid_event())
+
+        # DLQ에 sms만 저장
+        mock_dlq.send_to_dlq.assert_awaited_once()
+        dlq_call = mock_dlq.send_to_dlq.call_args.kwargs
+        assert dlq_call["channel"] == "sms"
+        assert dlq_call["failure_reason"] == "SMS gateway down"
+        # 최종 상태: partially_completed
+        final_call = mock_container.patch_item.call_args_list[-1]
+        ops = final_call.kwargs["patch_operations"]
+        status_op = next(op for op in ops if op["path"] == "/status")
+        assert status_op["value"] == "partially_completed"
+
+    @pytest.mark.asyncio()
+    @patch(*_PATCHES[:1])
+    @patch(*_PATCHES[1:2])
+    @patch(*_PATCHES[2:3])
+    @patch(*_PATCHES[3:4])
+    @patch(*_PATCHES[4:5])
+    @patch(*_PATCHES[5:6])
+    @patch(*_PATCHES[6:7])
+    async def test_all_channels_fail_sends_all_to_dlq(
+        self,
+        mock_dlq_cls: MagicMock,
+        mock_retry_cls: MagicMock,
+        mock_rl_cls: MagicMock,
+        mock_cb_cls: MagicMock,
+        mock_factory_cls: MagicMock,
+        mock_container_fn: MagicMock,
+        mock_settings: MagicMock,
+    ) -> None:
+        """전체 채널 실패 → failed + DLQ 2건."""
+        mock_container, _mock_factory, _mock_cb, _mock_rl, mock_retry, mock_dlq = _setup_mocks(
+            mock_dlq_cls, mock_retry_cls, mock_rl_cls, mock_cb_cls, mock_factory_cls, mock_container_fn
+        )
+        mock_container.read_item.return_value = {
+            "id": "evt-001",
+            "clinic_id": "CLINIC_123",
+            "status": "queued",
+            "event_type": "claim_completed",
+            "patient_id": "P-003",
+            "notifications": [
+                {"channel": "email", "provider": "sendgrid", "status": "pending"},
+                {"channel": "sms", "provider": "twilio", "status": "pending"},
+            ],
+        }
+        mock_retry.execute_with_retry = AsyncMock(
+            side_effect=[
+                MaxRetryExceededError(retry_count=3, last_error="Email error"),
+                MaxRetryExceededError(retry_count=3, last_error="SMS error"),
+            ]
+        )
+
+        await event_consumer(_make_event_grid_event())
+
+        assert mock_dlq.send_to_dlq.await_count == 2
+        # 최종 상태: failed
+        final_call = mock_container.patch_item.call_args_list[-1]
+        ops = final_call.kwargs["patch_operations"]
+        status_op = next(op for op in ops if op["path"] == "/status")
+        assert status_op["value"] == "failed"

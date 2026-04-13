@@ -481,12 +481,12 @@ Cosmos DB 클라이언트, 입력 검증, Message Broker 추상화, Notification
 - 이벤트 최종 status 결정: completed / partially_completed / failed
 - DLQ 이동 시 구조화 로그 출력 (SPEC §10.3: ERROR — event_id, channel, failure_reason, total_retry_count)
 **Acceptance Criteria:**
-- [ ] MAX_RETRY_COUNT 초과 → DLQ 컨테이너에 저장
-- [ ] DLQ 문서에 원본 페이로드, 실패 사유, 재시도 횟수, correlation_id 포함
-- [ ] DLQ 이동 후 원본 채널 status → failed
-- [ ] 2/3 성공, 1/3 실패 → partially_completed
-- [ ] 전체 실패 → failed
-- [ ] Tests pass
+- [x] MAX_RETRY_COUNT 초과 → DLQ 컨테이너에 저장
+- [x] DLQ 문서에 원본 페이로드, 실패 사유, 재시도 횟수, correlation_id 포함
+- [x] DLQ 이동 후 원본 채널 status → failed
+- [x] 2/3 성공, 1/3 실패 → partially_completed
+- [x] 전체 실패 → failed
+- [x] Tests pass
 
 ### Step 5-2: DLQ API — 조회 및 Replay
 **Objective:** DLQ 조회, 단건 Replay, 배치 Replay API 구현.
