@@ -357,11 +357,11 @@ Cosmos DB 클라이언트, 입력 검증, Message Broker 추상화, Notification
   6. Cosmos DB에 최종 상태 기록
 - 이 Step에서는 Circuit Breaker, Rate Limiter, 재시도는 제외 (Phase 4에서 통합)
 **Acceptance Criteria:**
-- [ ] Event Grid 메시지 수신 시 자동 트리거
-- [ ] 이미 success인 채널은 스킵
-- [ ] 전체 성공 → completed, 일부 성공 → partially_completed, 전체 실패 → failed
-- [ ] 처리 결과가 Cosmos DB에 기록됨
-- [ ] Tests pass
+- [x] Event Grid 메시지 수신 시 자동 트리거
+- [x] 이미 success인 채널은 스킵
+- [x] 전체 성공 → completed, 일부 성공 → partially_completed, 전체 실패 → failed
+- [x] 처리 결과가 Cosmos DB에 기록됨
+- [x] Tests pass
 
 ---
 
