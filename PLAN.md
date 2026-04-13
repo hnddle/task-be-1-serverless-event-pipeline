@@ -286,13 +286,13 @@ Cosmos DB 클라이언트, 입력 검증, Message Broker 추상화, Notification
 - **GET /events/{event_id}:** `clinic_id` 쿼리 파라미터 필수 (없으면 400), 문서 없으면 404
 - **GET /events:** `clinic_id` 필수, `status`/`event_type` 필터, `continuation_token` 페이지네이션, `page_size` 최대 100 클램핑
 **Acceptance Criteria:**
-- [ ] 유효한 POST 요청 시 201 + `{ event_id, status: "queued", correlation_id }` 반환
-- [ ] 동일 id 재요청 시 200 + 기존 문서 상태 반환
-- [ ] 검증 실패 시 400 + 에러 상세 반환
-- [ ] DB에 `_outbox_status: "pending"`으로 저장됨
-- [ ] `GET /events/{event_id}` — clinic_id 없으면 400, 문서 없으면 404
-- [ ] `GET /events` — clinic_id 필수, 페이지네이션 동작, page_size > 100 → 100 클램핑
-- [ ] Tests pass
+- [x] 유효한 POST 요청 시 201 + `{ event_id, status: "queued", correlation_id }` 반환
+- [x] 동일 id 재요청 시 200 + 기존 문서 상태 반환
+- [x] 검증 실패 시 400 + 에러 상세 반환
+- [x] DB에 `_outbox_status: "pending"`으로 저장됨
+- [x] `GET /events/{event_id}` — clinic_id 없으면 400, 문서 없으면 404
+- [x] `GET /events` — clinic_id 필수, 페이지네이션 동작, page_size > 100 → 100 클램핑
+- [x] Tests pass
 
 ### Step 2-2: Outbox Publisher (Change Feed Trigger)
 **Objective:** Change Feed 기반 Outbox Publisher Function 구현.
