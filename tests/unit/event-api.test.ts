@@ -66,7 +66,6 @@ function makeSettings(): Settings {
 }
 
 const VALID_EVENT_BODY = {
-  id: '550e8400-e29b-41d4-a716-446655440000',
   event_type: 'appointment_confirmed',
   clinic_id: 'CLINIC_123',
   patient_id: 'PATIENT_456',
@@ -109,7 +108,7 @@ describe('POST /events', () => {
 
     expect(resp.status).toBe(201);
     const body = JSON.parse(resp.body as string);
-    expect(body.event_id).toBe(VALID_EVENT_BODY.id);
+    expect(body.event_id).toBeDefined();
     expect(body.status).toBe('queued');
     expect(body).toHaveProperty('correlation_id');
   });
@@ -131,7 +130,7 @@ describe('POST /events', () => {
     mockItem.mockReturnValue({
       read: jest.fn().mockResolvedValue({
         resource: {
-          id: VALID_EVENT_BODY.id,
+          id: 'server-generated-uuid',
           status: 'processing',
           correlation_id: 'existing-cid',
         },
