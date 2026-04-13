@@ -188,11 +188,11 @@ Cosmos DB 클라이언트, 입력 검증, Message Broker 추상화, Notification
 - `init_containers()`: 로컬 개발/Emulator 환경에서 컨테이너가 없으면 자동 생성하는 유틸리티 함수
 - `azure-cosmos` Python SDK 사용 (비동기: `aio` 모듈)
 **Acceptance Criteria:**
-- [ ] Cosmos DB 클라이언트가 싱글턴으로 생성됨
-- [ ] 5개 컨테이너에 대한 참조를 제공하는 함수 존재
-- [ ] `events` 컨테이너에 `status`, `event_type`, `created_at` 복합 인덱스가 설정됨
-- [ ] `init_containers()` 호출 시 누락된 컨테이너를 올바른 Partition Key/TTL로 생성
-- [ ] 환경 변수 기반으로 연결 설정됨
+- [x] Cosmos DB 클라이언트가 싱글턴으로 생성됨
+- [x] 5개 컨테이너에 대한 참조를 제공하는 함수 존재
+- [x] `events` 컨테이너에 `status`, `event_type`, `created_at` 복합 인덱스가 설정됨
+- [x] `init_containers()` 호출 시 누락된 컨테이너를 올바른 Partition Key/TTL로 생성
+- [x] 환경 변수 기반으로 연결 설정됨
 
 ### Step 1-2: 입력 검증 모듈
 **Objective:** POST /events 요청 바디 검증 로직 구현.
@@ -210,11 +210,11 @@ Cosmos DB 클라이언트, 입력 검증, Message Broker 추상화, Notification
 - `channels`: 1개 이상 배열, `Literal["email", "sms", "webhook"]`만 허용, 중복 불가
 - 에러 응답 형식: `{ error: "VALIDATION_ERROR", message, details: [{ field, message }] }` (SPEC §8.4)
 **Acceptance Criteria:**
-- [ ] 유효한 요청은 통과
-- [ ] 각 필드별 검증 실패 시 해당 필드명과 메시지가 details에 포함됨
-- [ ] channels 중복 시 에러
-- [ ] 지원하지 않는 event_type 시 에러
-- [ ] Tests pass
+- [x] 유효한 요청은 통과
+- [x] 각 필드별 검증 실패 시 해당 필드명과 메시지가 details에 포함됨
+- [x] channels 중복 시 에러
+- [x] 지원하지 않는 event_type 시 에러
+- [x] Tests pass
 
 ### Step 1-3: Message Broker 추상화 (Adapter + Factory)
 **Objective:** Message Broker 인터페이스, Event Grid 어댑터, 팩토리 구현.
