@@ -3,7 +3,7 @@ name: Build and deploy Node.js project to Azure Function App - func-notification
 on:
   push:
     branches:
-      - release/1.0.0
+      - master
   workflow_dispatch:
 
 env:
