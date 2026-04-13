@@ -18,6 +18,7 @@ import { ValidationError } from '../shared/errors';
 import { getLogger, logWithContext } from '../shared/logger';
 import { validateCreateEvent } from '../shared/validator';
 import { getEventsContainer } from '../services/cosmos-client';
+import { v4 as uuidv4 } from 'uuid';
 
 const logger = getLogger('event-api');
 
@@ -96,8 +97,10 @@ export async function postEvents(
       return errorResponse('VALIDATION_ERROR', 'Invalid request body', 400);
     }
 
+    const eventId = uuidv4();
+
     setLogContext({
-      event_id: validated.id,
+      event_id: eventId,
       clinic_id: validated.clinic_id,
       event_type: validated.event_type,
     });
@@ -106,7 +109,7 @@ export async function postEvents(
     const now = new Date().toISOString();
 
     const eventDoc: NotificationEvent = {
-      id: validated.id,
+      id: eventId,
       clinic_id: validated.clinic_id,
       status: EventStatus.QUEUED,
       event_type: validated.event_type as NotificationEvent['event_type'],
@@ -130,15 +133,15 @@ export async function postEvents(
       });
 
       return jsonResponse(
-        { event_id: validated.id, status: 'queued', correlation_id: correlationId },
+        { event_id: eventId, status: 'queued', correlation_id: correlationId },
         201,
       );
     } catch (err: unknown) {
       // Idempotency: 409 Conflict → 기존 문서 반환
       if (typeof err === 'object' && err !== null && 'code' in err && (err as { code: number }).code === 409) {
-        logWithContext(logger, 'INFO', '중복 이벤트 요청', { event_id: validated.id });
+        logWithContext(logger, 'INFO', '중복 이벤트 요청', { event_id: eventId });
         try {
-          const { resource: existing } = await container.item(validated.id, validated.clinic_id).read();
+          const { resource: existing } = await container.item(eventId, validated.clinic_id).read();
           if (existing) {
             return jsonResponse({
               event_id: existing.id as string,
