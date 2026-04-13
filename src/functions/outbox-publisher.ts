@@ -71,6 +71,10 @@ export async function outboxPublisher(
       if (correlationId) setCorrelationId(correlationId);
       setLogContext({ event_id: eventId, clinic_id: clinicId, event_type: eventType });
 
+      logWithContext(logger, 'INFO', 'Change Feed 감지 — pending 문서 발행 시작', {
+        _outbox_status: 'pending',
+      });
+
       try {
         await broker.publish(doc);
 
