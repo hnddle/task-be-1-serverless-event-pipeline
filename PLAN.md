@@ -160,10 +160,10 @@
 - 파일 로깅 금지 — stdout/stderr만 사용 (12-Factor XI: Logs)
 - Application Insights SDK (`opencensus-ext-azure`) 연동 (`correlation_id` → `operation_id` 매핑)
 **Acceptance Criteria:**
-- [ ] 로그가 JSON 형식으로 stdout에 출력됨
-- [ ] correlation_id가 설정된 컨텍스트 내 모든 로그에 자동 포함됨
-- [ ] Application Insights operation_id 매핑 구현
-- [ ] Tests pass
+- [x] 로그가 JSON 형식으로 stdout에 출력됨
+- [x] correlation_id가 설정된 컨텍스트 내 모든 로그에 자동 포함됨
+- [x] Application Insights operation_id 매핑 구현
+- [x] Tests pass
 
 ---
 

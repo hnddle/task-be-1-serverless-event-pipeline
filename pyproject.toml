@@ -43,3 +43,7 @@ disallow_incomplete_defs = true
 check_untyped_defs = true
 mypy_path = ["."]
 exclude = ["tests/"]
+
+[[tool.mypy.overrides]]
+module = ["opencensus.*"]
+ignore_missing_imports = true
