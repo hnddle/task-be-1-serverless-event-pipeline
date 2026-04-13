@@ -139,10 +139,10 @@
 - Pydantic 모델은 Cosmos DB 문서 구조와 1:1 대응
 - `NOTIFICATION_EMAIL_PROVIDER`, `NOTIFICATION_SMS_PROVIDER` 환경 변수가 notifications[].provider 필드에 매핑됨을 docstring으로 명시
 **Acceptance Criteria:**
-- [ ] 모든 SPEC.md 데이터 모델이 Pydantic 모델로 정의됨
-- [ ] 필수 환경 변수 누락 시 명확한 에러 메시지와 함께 프로세스 종료
-- [ ] 선택 환경 변수 누락 시 기본값 적용 확인
-- [ ] Tests pass
+- [x] 모든 SPEC.md 데이터 모델이 Pydantic 모델로 정의됨
+- [x] 필수 환경 변수 누락 시 명확한 에러 메시지와 함께 프로세스 종료
+- [x] 선택 환경 변수 누락 시 기본값 적용 확인
+- [x] Tests pass
 
 ### Step 0-3: 구조화 로거 및 Correlation ID 컨텍스트
 **Objective:** JSON 구조화 로깅과 Correlation ID 전파 메커니즘 구현.

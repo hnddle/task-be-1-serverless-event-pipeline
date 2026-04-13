@@ -27,6 +27,9 @@ select = [
     "RUF",  # ruff-specific rules
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"src/models/*.py" = ["TCH003"]  # Pydantic 모델은 런타임에 타입이 필요
+
 [tool.ruff.lint.isort]
 known-first-party = ["src"]
 
