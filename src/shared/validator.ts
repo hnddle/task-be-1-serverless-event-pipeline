@@ -12,11 +12,8 @@ import { CHANNEL_TYPES, EVENT_TYPES } from '../models/events';
 import { ValidationError } from './errors';
 import type { FieldError } from './errors';
 
-const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
 export const createEventSchema = z
   .object({
-    id: z.string().regex(UUID_V4_REGEX, 'Must be a valid UUID v4 format'),
     event_type: z.enum(EVENT_TYPES as [string, ...string[]], {
       errorMap: () => ({ message: `Must be one of: ${EVENT_TYPES.join(', ')}` }),
     }),
