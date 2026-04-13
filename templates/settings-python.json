@@ -1,0 +1,30 @@
+{
+  "_comment": "Python (FastAPI/Django) 프로젝트용 — settings.json에 병합하여 사용",
+  "permissions": {
+    "allow": [
+      "Bash(python *)",
+      "Bash(pip *)",
+      "Bash(uv *)",
+      "Bash(pytest *)",
+      "Bash(ruff *)",
+      "Bash(mypy *)",
+      "Bash(uvicorn *)",
+      "Bash(celery *)",
+      "Bash(alembic *)",
+      "Bash(source *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(echo '$TOOL_INPUT' | jq -r '.file_path // empty') && [ -n \"$FILE\" ] && [[ \"$FILE\" == *.py ]] && ruff format \"$FILE\" 2>/dev/null; ruff check --fix \"$FILE\" 2>/dev/null; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}
