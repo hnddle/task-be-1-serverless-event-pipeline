@@ -114,11 +114,11 @@
 - `local.settings.sample.json`에 SPEC §11의 모든 환경 변수를 placeholder 값과 함께 기록
 - `local.settings.json`은 `.gitignore`에 포함
 **Acceptance Criteria:**
-- [ ] `pip install -r requirements.txt -r requirements-dev.txt` 성공
-- [ ] `pytest` 성공 (테스트 0개, 에러 없음)
-- [ ] `ruff check .` 성공
-- [ ] `mypy src/` 성공
-- [ ] `local.settings.sample.json`에 SPEC §11 전체 환경 변수가 포함됨
+- [x] `pip install -r requirements.txt -r requirements-dev.txt` 성공
+- [x] `pytest` 성공 (테스트 0개, 에러 없음)
+- [x] `ruff check .` 성공
+- [x] `mypy src/` 성공
+- [x] `local.settings.sample.json`에 SPEC §11 전체 환경 변수가 포함됨
 
 ### Step 0-2: 공통 모델 정의 및 환경 변수 설정
 **Objective:** 전체 시스템에서 사용하는 Pydantic 모델과 환경 변수 로드/검증 모듈 구현.
