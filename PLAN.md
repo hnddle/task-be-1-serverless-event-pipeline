@@ -310,11 +310,11 @@ Cosmos DB 클라이언트, 입력 검증, Message Broker 추상화, Notification
 - 이벤트의 `id`를 발행 메시지에 포함 (Consumer Idempotency)
 - leases 컨테이너를 Change Feed 체크포인트로 사용
 **Acceptance Criteria:**
-- [ ] pending 문서만 처리하고 published 문서는 무시
-- [ ] 발행 성공 시 published로 갱신
-- [ ] 발행 실패 시 failed_publish로 갱신
-- [ ] 무한 루프 없음 (published 갱신에 의한 재트리거 필터링)
-- [ ] Tests pass
+- [x] pending 문서만 처리하고 published 문서는 무시
+- [x] 발행 성공 시 published로 갱신
+- [x] 발행 실패 시 failed_publish로 갱신
+- [x] 무한 루프 없음 (published 갱신에 의한 재트리거 필터링)
+- [x] Tests pass
 
 ### Step 2-3: Outbox Retry (Timer Trigger)
 **Objective:** 발행 실패 문서를 주기적으로 재시도하는 Timer Function 구현.
