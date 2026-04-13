@@ -37,8 +37,8 @@ function isEtagConflict(err: unknown): boolean {
   return (
     typeof err === 'object' &&
     err !== null &&
-    'code' in err &&
-    (err as { code: number }).code === 412
+    (('statusCode' in err && (err as { statusCode: number }).statusCode === 412) ||
+      ('code' in err && (err as { code: number }).code === 412))
   );
 }
 
@@ -55,21 +55,29 @@ export class CircuitBreaker {
     return `${channel}:${provider}`;
   }
 
+  private defaultDoc(circuitId: string): CircuitBreakerDocument {
+    return {
+      id: circuitId,
+      state: CircuitState.CLOSED,
+      failure_count: 0,
+      success_count: 0,
+      last_failure_at: null,
+      opened_at: null,
+      updated_at: nowIso(),
+    };
+  }
+
   private async readState(circuitId: string): Promise<CircuitBreakerDocument> {
     try {
       const { resource } = await this.container.item(circuitId, circuitId).read();
+      if (!resource) return this.defaultDoc(circuitId);
       return resource as CircuitBreakerDocument;
     } catch (err: unknown) {
-      if (typeof err === 'object' && err !== null && 'code' in err && (err as { code: number }).code === 404) {
-        return {
-          id: circuitId,
-          state: CircuitState.CLOSED,
-          failure_count: 0,
-          success_count: 0,
-          last_failure_at: null,
-          opened_at: null,
-          updated_at: nowIso(),
-        };
+      const statusCode =
+        (err as Record<string, unknown>).statusCode ??
+        (err as Record<string, unknown>).code;
+      if (statusCode === 404) {
+        return this.defaultDoc(circuitId);
       }
       throw err;
     }

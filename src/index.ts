@@ -11,9 +11,14 @@ import { getDatabase, getLogsContainer } from './services/cosmos-client';
 import { initLogStore } from './services/log-store';
 try {
   const settings = getSettings();
-  const database = getDatabase(settings);
 
-  // logs 컨테이너가 존재하지 않으면 생성 후 initLogStore 호출
+  // 컨테이너 참조를 즉시 주입 (네트워크 호출 없음)
+  initLogStore(getLogsContainer(settings));
+  // eslint-disable-next-line no-console
+  console.log('[index] logs 컨테이너 참조 초기화 완료');
+
+  // 컨테이너 자동 생성은 백그라운드로 (이미 존재하면 no-op)
+  const database = getDatabase(settings);
   database.containers
     .createIfNotExists({
       id: 'logs',
@@ -32,14 +37,9 @@ try {
         ],
       },
     })
-    .then(() => {
-      initLogStore(getLogsContainer(settings));
-      // eslint-disable-next-line no-console
-      console.log('[index] logs 컨테이너 초기화 완료');
-    })
     .catch((err: unknown) => {
       // eslint-disable-next-line no-console
-      console.warn(`[index] logs 컨테이너 생성/초기화 실패: ${String(err)}`);
+      console.warn(`[index] logs 컨테이너 생성 실패 (이미 존재할 수 있음): ${String(err)}`);
     });
 } catch {
   // eslint-disable-next-line no-console
