@@ -50,11 +50,14 @@ export function persistLog(entry: Record<string, unknown>): void {
 
   // 선택 필드: 존재하는 것만 포함
   const optionalFields = [
-    'event_id', 'event_type', 'channel', 'provider',
+    'level', 'event_id', 'event_type', 'channel', 'provider',
     'status', 'duration_ms', 'circuit_state', 'retry_count',
     'error', 'dlq_id', 'original_event_id', 'original_correlation_id',
     'new_correlation_id', 'broker_name', 'from_state', 'to_state',
     'wait_ms', 'current_rate', 'next_delay_ms', 'clinic_id',
+    'final_status', 'total_channels', 'processed', 'skipped', 'total',
+    'circuit_id', 'limiter_id', 'backoff_ms', 'waited_ms',
+    'failure_reason', 'total_retry_count', 'patient_id',
   ];
 
   for (const field of optionalFields) {

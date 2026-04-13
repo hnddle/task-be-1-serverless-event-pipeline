@@ -67,8 +67,9 @@ export async function outboxPublisher(
 
       clearContext();
       const correlationId = doc.correlation_id as string ?? '';
+      const eventType = doc.event_type as string ?? '';
       if (correlationId) setCorrelationId(correlationId);
-      setLogContext({ event_id: eventId, clinic_id: clinicId });
+      setLogContext({ event_id: eventId, clinic_id: clinicId, event_type: eventType });
 
       try {
         await broker.publish(doc);
@@ -78,7 +79,8 @@ export async function outboxPublisher(
         ]);
 
         logWithContext(logger, 'INFO', 'Outbox 발행 완료', {
-          broker: broker.getBrokerName(),
+          status: 'published',
+          broker_name: broker.getBrokerName(),
         });
         processed++;
       } catch (err: unknown) {

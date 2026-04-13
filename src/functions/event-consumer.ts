@@ -151,9 +151,10 @@ export async function eventConsumer(
 
     clearContext();
     if (correlationId) setCorrelationId(correlationId);
-    setLogContext({ event_id: eventId, clinic_id: clinicId });
+    const eventType = (eventData.event_type as string) ?? '';
+    setLogContext({ event_id: eventId, clinic_id: clinicId, event_type: eventType });
 
-    logWithContext(logger, 'INFO', 'Event Consumer 시작');
+    logWithContext(logger, 'INFO', 'Event Consumer 시작', { status: 'processing' });
 
     const settings = _getSettings();
     const container = getEventsContainer(settings);
@@ -204,7 +205,7 @@ export async function eventConsumer(
         continue;
       }
 
-      setLogContext({ event_id: eventId, clinic_id: clinicId, channel });
+      setLogContext({ event_id: eventId, clinic_id: clinicId, event_type: eventType, channel, provider });
 
       const sendResult = await sendWithResilience(
         channel,
@@ -221,6 +222,7 @@ export async function eventConsumer(
         logWithContext(logger, 'INFO', '알림 발송 성공', {
           channel,
           provider: sendResult.provider,
+          status: 'success',
           duration_ms: sendResult.duration_ms,
         });
       } else {
@@ -230,7 +232,10 @@ export async function eventConsumer(
         logWithContext(logger, 'WARNING', '알림 발송 실패', {
           channel,
           provider: sendResult.provider,
+          status: 'failed',
+          duration_ms: sendResult.duration_ms,
           error: sendResult.message,
+          retry_count: sendResult.retry_count ?? 0,
         });
 
         // 최대 재시도 초과 시 DLQ로 이동
@@ -260,6 +265,7 @@ export async function eventConsumer(
     ]);
 
     logWithContext(logger, 'INFO', 'Event Consumer 완료', {
+      status: finalStatus,
       final_status: finalStatus,
       total_channels: notifications.length,
     });

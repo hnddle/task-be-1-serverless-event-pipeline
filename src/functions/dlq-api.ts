@@ -197,7 +197,7 @@ export async function postDlqReplay(
       return errorResponse('VALIDATION_ERROR', 'clinic_id query parameter is required', 400);
     }
 
-    setLogContext({ dlq_id: dlqId, clinic_id: clinicId });
+    setLogContext({ dlq_id: dlqId, clinic_id: clinicId, event_type: 'dlq_replay' });
 
     const settings = _getSettings();
     const dlqContainer = getDlqContainer(settings);

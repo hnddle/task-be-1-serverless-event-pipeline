@@ -46,6 +46,8 @@ function makeSettings(): Settings {
     RATE_LIMIT_MAX_WAIT_MS: 10000,
     MOCK_DELAY_MIN_MS: 100,
     MOCK_DELAY_MAX_MS: 500,
+    EVENT_GRID_TOPIC_ENDPOINT: 'https://test-topic.koreacentral-1.eventgrid.azure.net/api/events',
+    EVENT_GRID_TOPIC_KEY: 'test-key',
   };
 }
 

@@ -96,7 +96,11 @@ export async function postEvents(
       return errorResponse('VALIDATION_ERROR', 'Invalid request body', 400);
     }
 
-    setLogContext({ event_id: validated.id, clinic_id: validated.clinic_id });
+    setLogContext({
+      event_id: validated.id,
+      clinic_id: validated.clinic_id,
+      event_type: validated.event_type,
+    });
 
     const settings = _getSettings();
     const now = new Date().toISOString();
@@ -119,7 +123,10 @@ export async function postEvents(
 
     try {
       await container.items.create(eventDoc);
-      logWithContext(logger, 'INFO', '이벤트 생성 완료', { status: 'queued' });
+      logWithContext(logger, 'INFO', '이벤트 생성 완료', {
+        status: 'queued',
+        channels: validated.channels.join(','),
+      });
 
       return jsonResponse(
         { event_id: validated.id, status: 'queued', correlation_id: correlationId },

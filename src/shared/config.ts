@@ -42,6 +42,10 @@ export interface Settings {
   // 선택 — Mock Delay
   MOCK_DELAY_MIN_MS: number;
   MOCK_DELAY_MAX_MS: number;
+
+  // 선택 — Event Grid (QUEUE_SERVICE_TYPE=EVENT_GRID 일 때 필요)
+  EVENT_GRID_TOPIC_ENDPOINT: string;
+  EVENT_GRID_TOPIC_KEY: string;
 }
 
 const REQUIRED_VARS = [
@@ -108,6 +112,9 @@ export function loadSettings(): Settings {
 
     MOCK_DELAY_MIN_MS: getEnvInt('MOCK_DELAY_MIN_MS', 100),
     MOCK_DELAY_MAX_MS: getEnvInt('MOCK_DELAY_MAX_MS', 500),
+
+    EVENT_GRID_TOPIC_ENDPOINT: getEnvStr('EVENT_GRID_TOPIC_ENDPOINT', ''),
+    EVENT_GRID_TOPIC_KEY: getEnvStr('EVENT_GRID_TOPIC_KEY', ''),
   };
 }
 
