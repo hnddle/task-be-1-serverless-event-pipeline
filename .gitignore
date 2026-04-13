@@ -1,37 +1,20 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.egg-info/
+# Node.js
+node_modules/
 dist/
-build/
-*.egg
-
-# Virtual environments
-.venv/
-venv/
-env/
+*.js.map
 
 # Azure Functions
 local.settings.json
-.python_packages/
 .funcignore
 
 # IDE
-.vscode/
 .idea/
+.vscode/
 *.swp
 *.swo
 
-# Type checking
-.mypy_cache/
-.ruff_cache/
-
 # Testing
-.pytest_cache/
-htmlcov/
-.coverage
-coverage.xml
+coverage/
 
 # OS
 .DS_Store
@@ -41,3 +24,11 @@ Thumbs.db
 .env
 *.pem
 *.key
+
+# Azurite (local storage emulator)
+__azurite_db_*
+__blobstorage__/
+AzuriteConfig/
+
+# Claude Code local settings
+.claude/settings.local.json

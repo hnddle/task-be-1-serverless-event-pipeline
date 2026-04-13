@@ -1,7 +1,0 @@
-azure-functions>=1.17.0
-azure-cosmos>=4.7.0
-azure-eventgrid>=4.18.0
-azure-identity>=1.16.0
-opencensus-ext-azure>=1.1.13
-pydantic>=2.6.0
-pydantic-settings>=2.2.0

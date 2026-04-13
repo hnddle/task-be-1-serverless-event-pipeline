@@ -22,5 +22,6 @@
     "cosmosDB": {
       "connectionMode": "Direct"
     }
-  }
+  },
+  "watchDirectories": ["dist"]
 }

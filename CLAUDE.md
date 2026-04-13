@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 치과 보험 청구 시스템 — 이벤트 기반 알림 파이프라인 (Serverless Event Pipeline).
-현재 기획/설계 단계이며 코드 구현 전이다. SPEC.md와 PLAN.md에 따라 Phase 0부터 순차 구현 예정.
+SPEC.md와 PLAN.md에 따라 구현 완료. Node.js/TypeScript 기반.
 
 - `SPEC.md` — 기술 명세서 (단일 진실 공급원)
 - `PLAN.md` — 구현 계획서
@@ -21,7 +21,7 @@ event-consumer → channels 순회:
   Circuit Breaker 확인 → Rate Limiter 확인 → NotificationStrategy.send()
        ↓
   성공 → Cosmos DB 기록 (completed/partially_completed)
-  실�� → 재시도 (지수 백오프, MAX_RETRY_COUNT) → 초과 시 DLQ 저장
+  실패 → 재시도 (지수 백오프, MAX_RETRY_COUNT) → 초과 시 DLQ 저장
        ↓
 DLQ API → GET /dlq 조회 → POST /dlq/:id/replay 재처리
 ```
@@ -40,53 +40,64 @@ DLQ API → GET /dlq 조회 → POST /dlq/:id/replay 재처리
 
 | Layer | Technology |
 |-------|-----------|
-| Runtime | Python 3.11+ |
-| Framework | Azure Functions v4 (Python v2 programming model) |
+| Runtime | Node.js 20+ |
+| Language | TypeScript 5 (strict mode) |
+| Framework | Azure Functions v4 (Node.js programming model) |
 | Database | Azure Cosmos DB (NoSQL API) |
 | Message Broker | Azure Event Grid |
 | Monitoring | Azure Monitor + Application Insights |
 | DLQ | Azure Cosmos DB (별도 컨테이너) |
-| Validation | Pydantic v2 |
-| Package Manager | pip (requirements.txt) |
-| Test | pytest + pytest-asyncio |
-| Linter / Formatter | ruff |
-| Type Checker | mypy (strict mode) |
+| Validation | Zod |
+| Package Manager | npm |
+| Test | Jest + ts-jest |
+| Linter / Formatter | ESLint + Prettier |
+| Type Checker | TypeScript (strict mode) |
 
 ## Project Structure
 
 ```
-function_app.py             # Azure Functions v2 진입점 (Blueprint 등록)
 src/
-├── functions/              # Azure Functions Blueprint 모듈 (5개)
+├── functions/              # Azure Functions 모듈 (5개, app.http/cosmosDB/timer/eventGrid)
+│   ├── event-api.ts
+│   ├── outbox-publisher.ts
+│   ├── outbox-retry.ts
+│   ├── event-consumer.ts
+│   └── dlq-api.ts
 ├── services/               # 비즈니스 로직
-│   ├── cosmos_client.py
-│   ├── message_broker/     # Adapter+Factory 패턴 (ABC)
-│   ├── notification/       # Strategy 패턴 (ABC)
-│   ├── circuit_breaker.py
-│   ├── rate_limiter.py
-���   ├── retry_service.py
-│   └── dlq_service.py
+│   ├── cosmos-client.ts
+│   ├── message-broker/     # Adapter+Factory 패턴 (interface)
+│   ├── notification/       # Strategy 패턴 (interface)
+│   ├── circuit-breaker.ts
+│   ├── rate-limiter.ts
+│   ├── retry-service.ts
+│   └── dlq-service.ts
 ├── shared/                 # 공통 유틸 (config, logger, validator, correlation, errors)
-└── models/                 # Pydantic 모델 (Cosmos DB 문서 구조와 1:1)
+│   ├── config.ts
+│   ├── logger.ts
+│   ├── validator.ts
+│   ├── correlation.ts
+│   └── errors.ts
+└── models/                 # TypeScript 인터페이스 (Cosmos DB 문서 구조와 1:1)
+    ├── events.ts
+    ├── circuit-breaker.ts
+    ├── dlq.ts
+    └── rate-limiter.ts
 tests/
-├── conftest.py             # pytest fixtures (Cosmos DB Emulator 등)
-├── unit/                   # 단위 테스트
-└── integration/            # 통합 테스트 (Cosmos DB Emulator)
+├── unit/                   # 단위 테스트 (15 파일, 181 tests)
+└── integration/            # 통합 테스트 (5 파일, Cosmos DB Emulator)
 ```
 
 ## Development Commands
 
 ```bash
-pip install -r requirements.txt -r requirements-dev.txt  # 의존성 설치
-func start                   # Azure Functions 로컬 실행
-pytest                       # 전체 테스트
-pytest tests/unit/           # 단위 테스트만
-pytest tests/integration/    # 통합 테스트만
-pytest -k "test_name"        # 특정 테스트 실행
-ruff check .                 # Lint 실행
-ruff check . --fix           # Lint 자동 수정
-ruff format .                # 코드 포매팅
-mypy src/                    # 타입 체크
+npm install                           # 의존성 설치
+npm run build                         # TypeScript 빌드
+npm start                             # Azure Functions 로컬 실행
+npx jest                              # 전체 테스트
+npx jest tests/unit                   # 단위 테스트만
+npx jest tests/integration            # 통합 테스트만 (Emulator 필요)
+npx jest -t "test_name"               # 특정 테스트 실행
+npx tsc --noEmit                      # 타입 체크
 ```
 
 ## Git Workflow
@@ -103,35 +114,35 @@ mypy src/                    # 타입 체크
 
 ## Key Rules
 
-### Code Style (`rules/code-style/python.md`)
-- Python 3.11+ 기능 사용 가능
-- 모든 함수 파라미터와 반환 타입에 type hint 필수
-- 데이터 검증: Pydantic `BaseModel` 사용 (dataclass 아님)
+### Code Style (`rules/code-style/typescript.md`)
+- TypeScript strict mode
+- 모든 함수 파라미터와 반환 타입에 type annotation 필수
+- 데이터 검증: Zod 스키마 사용
 - 비동기 I/O: `async/await` 사용
-- import 순서: stdlib → third-party → local (ruff isort로 강제)
-- 문자열: f-string 우선
+- import 순서: node builtins → third-party → local
+- 문자열: 템플릿 리터럴 우선
 - 최대 줄 길이: 120자
-- 프로덕션 코드에서 `print()` 금지 — `logging` 모듈 사용 (`src/shared/logger.py`)
+- 프로덕션 코드에서 `console.log()` 금지 — `src/shared/logger.ts` 사용
 - 상수: `UPPER_SNAKE_CASE`
-- 환경 변수: `pydantic-settings` 경유 (`src/shared/config.py`)
-- Linter/Formatter: ruff, Type checker: mypy (strict)
+- 환경 변수: `src/shared/config.ts`의 `loadSettings()` 경유
+- Path alias: `@src/*` → `src/*`, `@tests/*` → `tests/*`
 
 ### Testing (`rules/testing.md`)
-- 프레임워크: pytest + pytest-asyncio
+- 프레임워크: Jest + ts-jest
 - 테스트 파일 위치: `tests/unit/`, `tests/integration/`
-- 파일명: `test_{모듈명}.py`, 소스 구조 미러링
-- DB 테스트는 실제 Cosmos DB Emulator 사용 (mock 금지)
+- 파일명: `{모듈명}.test.ts` (단위), `{흐름}.integration.test.ts` (통합)
+- 통합 테스트는 실제 Cosmos DB Emulator 사용 (Emulator 미실행 시 자동 스킵)
 - 최소 요건: 모든 public 함수에 최소 1개 테스트
-- 공유 setup: pytest fixture (`conftest.py`)
+- 테스트용 settings 주입: `_setSettingsForTest()` 패턴
 
 ### Security (`rules/security.md`)
 - 시크릿 하드코딩 절대 금지 — 모든 시크릿은 환경변수로 로드
-- `local.settings.json`은 `.gitignore` 대상 (절대 ���밋 금지)
-- API 경계에서 모든 외부 입력 검증 (Pydantic)
+- `local.settings.json`은 `.gitignore` 대상 (절대 커밋 금지)
+- API 경계에서 모든 외부 입력 검증 (Zod)
 - 로그에 민감정보(키, 토큰, 환자 개인정보) 절대 금지
 
 ### 12-Factor App (`rules/twelve-factor.md`)
-- **III. Config**: 코드 내 하드코딩 금지, 환경변수 전용 (`src/shared/config.py`)
+- **III. Config**: 코드 내 하드코딩 금지, 환경변수 전용 (`src/shared/config.ts`)
 - **IV. Backing Services**: Cosmos DB, Event Grid를 교체 가능한 리소스로 취급
 - **XI. Logs**: stdout/stderr만 사용, 파일 로깅 금지, JSON 구조화 로그
 
@@ -139,11 +150,11 @@ mypy src/                    # 타입 체크
 
 구현 시 반드시 SPEC.md의 패턴 요구사항을 준수한다:
 
-- **Adapter + Factory** (`src/services/message_broker/`): `QUEUE_SERVICE_TYPE` 환경변수로 브로커 교체
+- **Adapter + Factory** (`src/services/message-broker/`): `QUEUE_SERVICE_TYPE` 환경변수로 브로커 교체
 - **Strategy** (`src/services/notification/`): 채널별 알림 전략, Mock 발송
-- **Circuit Breaker** (`src/services/circuit_breaker.py`): `{channel}:{provider}` 조합별 독립 운용, ETag 동시성 제어
-- **Token Bucket Rate Limiter** (`src/services/rate_limiter.py`): ETag 동시성 제어
-- **Transactional Outbox** (`src/functions/outbox_publisher.py`): Change Feed 기반, 무한루프 방지 필수
+- **Circuit Breaker** (`src/services/circuit-breaker.ts`): `{channel}:{provider}` 조합별 독립 운용, ETag 동시성 제어
+- **Token Bucket Rate Limiter** (`src/services/rate-limiter.ts`): ETag 동시성 제어
+- **Transactional Outbox** (`src/functions/outbox-publisher.ts`): Change Feed 기반, 무한루프 방지 필수
 
 ## Implementation Tracking
 
@@ -157,3 +168,4 @@ mypy src/                    # 타입 체크
 - 서비스 언어: 한국어 전용
 - Cosmos DB 컨테이너 5개: `events`, `dead-letter-queue`, `circuit-breaker`, `rate-limiter`, `leases`
 - 환경 변수 전체 목록: SPEC.md §11 참조, 템플릿: `local.settings.sample.json`
+- Python에서 Node.js/TypeScript로 마이그레이션 완료 (Azure Functions 무료 구독 Windows 호환)
