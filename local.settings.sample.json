@@ -1,0 +1,36 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+
+    "QUEUE_SERVICE_TYPE": "EVENT_GRID",
+    "NOTIFICATION_EMAIL_PROVIDER": "sendgrid",
+    "NOTIFICATION_SMS_PROVIDER": "twilio",
+    "WEBHOOK_URL": "https://example.com/webhook",
+
+    "COSMOS_DB_ENDPOINT": "https://localhost:8081",
+    "COSMOS_DB_KEY": "<your-cosmos-db-key>",
+    "COSMOS_DB_DATABASE": "notification-pipeline",
+    "CosmosDBConnection": "AccountEndpoint=https://localhost:8081/;AccountKey=<your-cosmos-db-key>;",
+
+    "EVENT_GRID_TOPIC_ENDPOINT": "https://<your-topic-name>.<region>.eventgrid.azure.net/api/events",
+    "EVENT_GRID_TOPIC_KEY": "<your-event-grid-key>",
+
+    "CB_FAILURE_THRESHOLD": "5",
+    "CB_COOLDOWN_MS": "30000",
+    "CB_SUCCESS_THRESHOLD": "2",
+
+    "MAX_RETRY_COUNT": "3",
+    "RETRY_BASE_DELAY_MS": "1000",
+    "RETRY_BACKOFF_MULTIPLIER": "2",
+
+    "RATE_LIMIT_EMAIL_PER_SEC": "10",
+    "RATE_LIMIT_SMS_PER_SEC": "5",
+    "RATE_LIMIT_WEBHOOK_PER_SEC": "20",
+    "RATE_LIMIT_MAX_WAIT_MS": "10000",
+
+    "MOCK_DELAY_MIN_MS": "100",
+    "MOCK_DELAY_MAX_MS": "500"
+  }
+}

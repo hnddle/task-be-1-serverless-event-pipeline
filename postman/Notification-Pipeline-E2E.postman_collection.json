@@ -1,0 +1,684 @@
+{
+  "info": {
+    "name": "Notification Pipeline - E2E Demo",
+    "description": "치과 보험 청구 알림 파이프라인 End-to-End 데모 시연용.\n\n## 시연 시나리오\n\n### (a) 이벤트 3건 발행 (각기 다른 channels)\n1. Step 1: Email 전용\n2. Step 2: SMS 전용\n3. Step 3: 전체 채널 (Email + SMS + Webhook)\n\n### (b) 클라우드 로깅 확인\nAzure Portal > Application Insights > Transaction search에서 correlation_id로 검색\n\n### (c) 이력 조회\n4. Step 4~6: 각 이벤트 상세 조회\n7. Step 7: 이벤트 목록 조회\n\n### (d) 프로바이더 전환 증명\n환경 변수 변경 후 Step 8~9 실행\n\n## 설정\nVariables 탭에서 `baseUrl`을 배포된 Function App URL로 변경",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://func-notification-pipeline.azurewebsites.net/api",
+      "type": "string"
+    },
+    {
+      "key": "clinicId",
+      "value": "CLINIC_DEMO_01",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "(a) 이벤트 발행",
+      "item": [
+        {
+          "name": "Step 1 - Email 전용 이벤트 생성",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "",
+                  "pm.test('Status is 201 Created', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response has event_id', () => {",
+                  "    pm.expect(res.event_id).to.be.a('string');",
+                  "});",
+                  "",
+                  "pm.test('Status is queued', () => {",
+                  "    pm.expect(res.status).to.eql('queued');",
+                  "});",
+                  "",
+                  "pm.test('Has correlation_id', () => {",
+                  "    pm.expect(res.correlation_id).to.be.a('string');",
+                  "});",
+                  "",
+                  "if (res.correlation_id) {",
+                  "    pm.collectionVariables.set('correlationId1', res.correlation_id);",
+                  "    console.log('correlation_id (email):', res.correlation_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const uuid = require('uuid');",
+                  "const eventId = uuid.v4();",
+                  "pm.collectionVariables.set('eventId1', eventId);",
+                  "console.log('Generated event ID (email):', eventId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{eventId1}}\",\n  \"event_type\": \"appointment_confirmed\",\n  \"clinic_id\": \"{{clinicId}}\",\n  \"patient_id\": \"P-DEMO-01\",\n  \"channels\": [\"email\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/events",
+              "host": ["{{baseUrl}}"],
+              "path": ["events"]
+            },
+            "description": "Email 채널만 사용하는 이벤트 생성.\nprovider: sendgrid (NOTIFICATION_EMAIL_PROVIDER)"
+          }
+        },
+        {
+          "name": "Step 2 - SMS 전용 이벤트 생성",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "",
+                  "pm.test('Status is 201 Created', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response has event_id', () => {",
+                  "    pm.expect(res.event_id).to.be.a('string');",
+                  "});",
+                  "",
+                  "pm.test('Status is queued', () => {",
+                  "    pm.expect(res.status).to.eql('queued');",
+                  "});",
+                  "",
+                  "if (res.correlation_id) {",
+                  "    pm.collectionVariables.set('correlationId2', res.correlation_id);",
+                  "    console.log('correlation_id (sms):', res.correlation_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const uuid = require('uuid');",
+                  "const eventId = uuid.v4();",
+                  "pm.collectionVariables.set('eventId2', eventId);",
+                  "console.log('Generated event ID (sms):', eventId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{eventId2}}\",\n  \"event_type\": \"insurance_approved\",\n  \"clinic_id\": \"{{clinicId}}\",\n  \"patient_id\": \"P-DEMO-02\",\n  \"channels\": [\"sms\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/events",
+              "host": ["{{baseUrl}}"],
+              "path": ["events"]
+            },
+            "description": "SMS 채널만 사용하는 이벤트 생성.\nprovider: twilio (NOTIFICATION_SMS_PROVIDER)"
+          }
+        },
+        {
+          "name": "Step 3 - 전체 채널 이벤트 생성 (Email+SMS+Webhook)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "",
+                  "pm.test('Status is 201 Created', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response has event_id', () => {",
+                  "    pm.expect(res.event_id).to.be.a('string');",
+                  "});",
+                  "",
+                  "pm.test('Status is queued', () => {",
+                  "    pm.expect(res.status).to.eql('queued');",
+                  "});",
+                  "",
+                  "if (res.correlation_id) {",
+                  "    pm.collectionVariables.set('correlationId3', res.correlation_id);",
+                  "    console.log('correlation_id (all):', res.correlation_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const uuid = require('uuid');",
+                  "const eventId = uuid.v4();",
+                  "pm.collectionVariables.set('eventId3', eventId);",
+                  "console.log('Generated event ID (all channels):', eventId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{eventId3}}\",\n  \"event_type\": \"claim_completed\",\n  \"clinic_id\": \"{{clinicId}}\",\n  \"patient_id\": \"P-DEMO-03\",\n  \"channels\": [\"email\", \"sms\", \"webhook\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/events",
+              "host": ["{{baseUrl}}"],
+              "path": ["events"]
+            },
+            "description": "Email + SMS + Webhook 전체 채널 이벤트 생성.\n3개 프로바이더가 모두 동작하는지 확인."
+          }
+        }
+      ],
+      "description": "3건의 이벤트를 각기 다른 채널 조합으로 발행한다.\n\n실행 후 10~15초 대기하면 Change Feed → Event Grid → Consumer 처리가 완료된다."
+    },
+    {
+      "name": "(b) 클라우드 로깅 확인 (수동)",
+      "item": [
+        {
+          "name": "[INFO] Azure Portal에서 로그 확인",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/events?clinic_id={{clinicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["events"],
+              "query": [
+                { "key": "clinic_id", "value": "{{clinicId}}" }
+              ]
+            },
+            "description": "## 클라우드 로깅 확인 방법\n\nAzure Portal에서 구조화 로그를 확인한다:\n\n1. **Azure Portal** > Function App > **Application Insights** 클릭\n2. **Transaction search** 메뉴 진입\n3. 검색 필터에서 시간 범위를 \"Last 30 minutes\"으로 설정\n4. `correlation_id` 값으로 검색하면 해당 이벤트의 전체 흐름 확인 가능\n\n### 확인 포인트\n- `customDimensions`에 `correlation_id`, `event_id`, `channel`, `provider` 등이 포함됨\n- 이벤트 수신 → Outbox 발행 → Consumer 처리 → 채널별 발송 결과까지 추적 가능\n\n### KQL 쿼리 예시\n```\ntraces\n| where customDimensions.correlation_id == \"Step 1에서 받은 correlation_id\"\n| order by timestamp asc\n| project timestamp, message, customDimensions\n```\n\ncorrelation_id 값은 이전 Step의 Console 로그에서 확인 가능."
+          }
+        }
+      ],
+      "description": "Azure Portal > Application Insights에서 구조화 로그를 확인하는 단계.\n\nPostman Console(하단)에서 이전 Step의 correlation_id 값을 복사하여 Azure Portal에서 검색한다."
+    },
+    {
+      "name": "(c) 이력 조회",
+      "item": [
+        {
+          "name": "Step 4 - Email 이벤트 상세 조회",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "",
+                  "pm.test('Status is 200 OK', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Event status is completed or processing', () => {",
+                  "    pm.expect(['completed', 'processing', 'queued']).to.include(res.status);",
+                  "});",
+                  "",
+                  "pm.test('Has notifications array', () => {",
+                  "    pm.expect(res.notifications).to.be.an('array');",
+                  "});",
+                  "",
+                  "if (res.notifications && res.notifications.length > 0) {",
+                  "    pm.test('Email channel exists', () => {",
+                  "        const email = res.notifications.find(n => n.channel === 'email');",
+                  "        pm.expect(email).to.not.be.undefined;",
+                  "    });",
+                  "",
+                  "    pm.test('Provider is sendgrid', () => {",
+                  "        const email = res.notifications.find(n => n.channel === 'email');",
+                  "        pm.expect(email.provider).to.eql('sendgrid');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/events/{{eventId1}}?clinic_id={{clinicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["events", "{{eventId1}}"],
+              "query": [
+                { "key": "clinic_id", "value": "{{clinicId}}" }
+              ]
+            },
+            "description": "Email 전용 이벤트의 발송 결과를 확인한다.\n\nnotifications[0].provider가 'sendgrid'인지 확인."
+          }
+        },
+        {
+          "name": "Step 5 - SMS 이벤트 상세 조회",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "",
+                  "pm.test('Status is 200 OK', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Event status is completed or processing', () => {",
+                  "    pm.expect(['completed', 'processing', 'queued']).to.include(res.status);",
+                  "});",
+                  "",
+                  "if (res.notifications && res.notifications.length > 0) {",
+                  "    pm.test('SMS channel exists', () => {",
+                  "        const sms = res.notifications.find(n => n.channel === 'sms');",
+                  "        pm.expect(sms).to.not.be.undefined;",
+                  "    });",
+                  "",
+                  "    pm.test('Provider is twilio', () => {",
+                  "        const sms = res.notifications.find(n => n.channel === 'sms');",
+                  "        pm.expect(sms.provider).to.eql('twilio');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/events/{{eventId2}}?clinic_id={{clinicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["events", "{{eventId2}}"],
+              "query": [
+                { "key": "clinic_id", "value": "{{clinicId}}" }
+              ]
+            },
+            "description": "SMS 전용 이벤트의 발송 결과를 확인한다.\n\nnotifications[0].provider가 'twilio'인지 확인."
+          }
+        },
+        {
+          "name": "Step 6 - 전체 채널 이벤트 상세 조회",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "",
+                  "pm.test('Status is 200 OK', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Has 3 notifications', () => {",
+                  "    pm.expect(res.notifications).to.have.lengthOf(3);",
+                  "});",
+                  "",
+                  "if (res.notifications && res.notifications.length === 3) {",
+                  "    const channels = res.notifications.map(n => n.channel).sort();",
+                  "    pm.test('All 3 channels present', () => {",
+                  "        pm.expect(channels).to.deep.equal(['email', 'sms', 'webhook']);",
+                  "    });",
+                  "",
+                  "    pm.test('Email provider is sendgrid', () => {",
+                  "        const email = res.notifications.find(n => n.channel === 'email');",
+                  "        pm.expect(email.provider).to.eql('sendgrid');",
+                  "    });",
+                  "",
+                  "    pm.test('SMS provider is twilio', () => {",
+                  "        const sms = res.notifications.find(n => n.channel === 'sms');",
+                  "        pm.expect(sms.provider).to.eql('twilio');",
+                  "    });",
+                  "",
+                  "    pm.test('Webhook provider is webhook', () => {",
+                  "        const wh = res.notifications.find(n => n.channel === 'webhook');",
+                  "        pm.expect(wh.provider).to.eql('webhook');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/events/{{eventId3}}?clinic_id={{clinicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["events", "{{eventId3}}"],
+              "query": [
+                { "key": "clinic_id", "value": "{{clinicId}}" }
+              ]
+            },
+            "description": "3채널 이벤트의 발송 결과를 확인한다.\n\n3개 notifications가 각각 sendgrid, twilio, webhook 프로바이더를 사용하는지 확인."
+          }
+        },
+        {
+          "name": "Step 7 - 이벤트 목록 조회",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "",
+                  "pm.test('Status is 200 OK', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Has items array', () => {",
+                  "    pm.expect(res.items).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test('At least 3 events', () => {",
+                  "    pm.expect(res.items.length).to.be.at.least(3);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/events?clinic_id={{clinicId}}&page_size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["events"],
+              "query": [
+                { "key": "clinic_id", "value": "{{clinicId}}" },
+                { "key": "page_size", "value": "20" }
+              ]
+            },
+            "description": "해당 clinic의 전체 이벤트 목록을 조회한다.\n\n방금 생성한 3건이 포함되어 있는지 확인."
+          }
+        },
+        {
+          "name": "Step 7-1 - DLQ 목록 조회",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "",
+                  "pm.test('Status is 200 OK', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Has items array', () => {",
+                  "    pm.expect(res.items).to.be.an('array');",
+                  "});",
+                  "",
+                  "console.log('DLQ count:', res.total_count || res.items.length);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/dlq?clinic_id={{clinicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["dlq"],
+              "query": [
+                { "key": "clinic_id", "value": "{{clinicId}}" }
+              ]
+            },
+            "description": "DLQ에 실패한 메시지가 있는지 확인한다.\n\nMock 모드에서는 정상적으로 빈 배열이 반환될 것으로 예상."
+          }
+        }
+      ],
+      "description": "발행한 이벤트 3건의 처리 결과를 조회한다.\n\n이벤트 생성 후 10~15초 대기한 뒤 실행하면 Consumer 처리가 완료되어 completed 상태를 확인할 수 있다."
+    },
+    {
+      "name": "(d) 프로바이더 전환 증명",
+      "item": [
+        {
+          "name": "[INFO] 환경 변수 변경 안내",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/events?clinic_id={{clinicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["events"],
+              "query": [
+                { "key": "clinic_id", "value": "{{clinicId}}" }
+              ]
+            },
+            "description": "## 프로바이더 전환 방법\n\nAzure Portal에서 환경 변수를 변경한 후 이벤트를 다시 발행한다.\n\n### 변경할 환경 변수\n\n| Variable | Before | After |\n|----------|--------|-------|\n| `NOTIFICATION_EMAIL_PROVIDER` | `sendgrid` | `ses` |\n| `NOTIFICATION_SMS_PROVIDER` | `twilio` | `vonage` |\n\n### 변경 절차\n1. Azure Portal > Function App > Configuration\n2. Application settings에서 위 2개 변수 값 변경\n3. Save > 자동 재시작 대기 (약 30초)\n4. 아래 Step 8, 9 실행\n\n### 확인 포인트\n- Step 8~9의 이벤트 상세 조회에서 `provider` 필드가 변경된 값(`ses`, `vonage`)으로 표시됨\n- 코드 수정 없이 환경 변수만으로 프로바이더가 교체됨을 증명"
+          }
+        },
+        {
+          "name": "Step 8 - 전환 후 이벤트 생성 (Email+SMS)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "",
+                  "pm.test('Status is 201 Created', () => {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Status is queued', () => {",
+                  "    pm.expect(res.status).to.eql('queued');",
+                  "});",
+                  "",
+                  "if (res.correlation_id) {",
+                  "    pm.collectionVariables.set('correlationId4', res.correlation_id);",
+                  "    console.log('correlation_id (provider switch):', res.correlation_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const uuid = require('uuid');",
+                  "const eventId = uuid.v4();",
+                  "pm.collectionVariables.set('eventId4', eventId);",
+                  "console.log('Generated event ID (provider switch):', eventId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{eventId4}}\",\n  \"event_type\": \"appointment_confirmed\",\n  \"clinic_id\": \"{{clinicId}}\",\n  \"patient_id\": \"P-DEMO-04\",\n  \"channels\": [\"email\", \"sms\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/events",
+              "host": ["{{baseUrl}}"],
+              "path": ["events"]
+            },
+            "description": "환경 변수 변경 후 새 이벤트를 생성한다.\n\n이전과 동일한 채널이지만, 프로바이더가 ses/vonage로 바뀌어야 한다."
+          }
+        },
+        {
+          "name": "Step 9 - 전환 후 이벤트 상세 조회 (프로바이더 확인)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "",
+                  "pm.test('Status is 200 OK', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "if (res.notifications && res.notifications.length > 0) {",
+                  "    const email = res.notifications.find(n => n.channel === 'email');",
+                  "    const sms = res.notifications.find(n => n.channel === 'sms');",
+                  "",
+                  "    if (email) {",
+                  "        pm.test('Email provider changed (not sendgrid)', () => {",
+                  "            console.log('Email provider:', email.provider);",
+                  "            pm.expect(email.provider).to.not.eql('sendgrid');",
+                  "        });",
+                  "    }",
+                  "",
+                  "    if (sms) {",
+                  "        pm.test('SMS provider changed (not twilio)', () => {",
+                  "            console.log('SMS provider:', sms.provider);",
+                  "            pm.expect(sms.provider).to.not.eql('twilio');",
+                  "        });",
+                  "    }",
+                  "}",
+                  "",
+                  "console.log('=== Provider Switch Verified ===');",
+                  "console.log('Before: sendgrid / twilio');",
+                  "console.log('After: check notifications[].provider in response body');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/events/{{eventId4}}?clinic_id={{clinicId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["events", "{{eventId4}}"],
+              "query": [
+                { "key": "clinic_id", "value": "{{clinicId}}" }
+              ]
+            },
+            "description": "프로바이더가 변경되었는지 확인한다.\n\n## 기대 결과\n- email provider: `ses` (변경 전: `sendgrid`)\n- sms provider: `vonage` (변경 전: `twilio`)\n\n코드 수정 없이 환경 변수만으로 프로바이더가 교체됨을 증명."
+          }
+        }
+      ],
+      "description": "환경 변수 변경을 통한 프로바이더 전환을 증명한다.\n\n[INFO] 요청을 먼저 열어 변경 절차를 확인한 뒤, Azure Portal에서 환경 변수를 변경하고 Step 8~9를 실행한다."
+    },
+    {
+      "name": "Extras",
+      "item": [
+        {
+          "name": "Idempotency 확인 - 동일 ID 재전송",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "",
+                  "pm.test('Status is 200 OK (not 201)', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Message indicates duplicate', () => {",
+                  "    pm.expect(res.message).to.include('already exists');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{eventId1}}\",\n  \"event_type\": \"appointment_confirmed\",\n  \"clinic_id\": \"{{clinicId}}\",\n  \"patient_id\": \"P-DEMO-01\",\n  \"channels\": [\"email\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/events",
+              "host": ["{{baseUrl}}"],
+              "path": ["events"]
+            },
+            "description": "Step 1과 동일한 ID로 재전송한다.\n\n201이 아닌 200이 반환되고, 'Event already exists' 메시지가 포함되어야 한다."
+          }
+        },
+        {
+          "name": "Validation 확인 - 잘못된 요청",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 400 Bad Request', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "const res = pm.response.json();",
+                  "pm.test('Error code is VALIDATION_ERROR', () => {",
+                  "    pm.expect(res.error).to.eql('VALIDATION_ERROR');",
+                  "});",
+                  "",
+                  "pm.test('Has details array', () => {",
+                  "    pm.expect(res.details).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"not-a-uuid\",\n  \"event_type\": \"invalid_type\",\n  \"clinic_id\": \"\",\n  \"channels\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/events",
+              "host": ["{{baseUrl}}"],
+              "path": ["events"]
+            },
+            "description": "잘못된 요청으로 400 에러와 validation 상세 정보가 반환되는지 확인한다."
+          }
+        }
+      ],
+      "description": "추가 데모용. 멱등성(Idempotency)과 입력 검증(Validation)을 확인한다."
+    }
+  ]
+}

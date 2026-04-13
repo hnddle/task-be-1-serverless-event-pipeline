@@ -1,0 +1,39 @@
+# Node.js
+node_modules/
+dist/
+*.js.map
+
+# Azure Functions
+local.settings.json
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# Testing
+coverage/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+*.pem
+*.key
+
+# Azurite (local storage emulator)
+__azurite_db_*
+__blobstorage__/
+__queuestorage__/
+AzuriteConfig
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Python leftovers
+*.pyc
+__pycache__/
+.python-version
+.ruff_cache/
