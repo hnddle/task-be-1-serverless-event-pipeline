@@ -501,8 +501,6 @@ API 호출부터 Change Feed, 브로커, 워커까지 이어지는 전체 흐름
 ## 시간 부족으로 포기한 부분
 
 - **실제 알림 프로바이더 연동**: SendGrid, Twilio 등 실제 API 연동 대신 Mock 딜레이로 대체. 실서비스라면 각 프로바이더 SDK를 Strategy 구현체에 교체하면 된다.
-- **Application Insights 연동**: 로거는 구조화 JSON으로 구현했으나, Azure Monitor/Application Insights에 직접 연동하는 부분은 미구현.
-- **CI/CD 파이프라인**: GitHub Actions 등을 통한 자동 빌드/배포 파이프라인 미구성.
 - **Redis 기반 Circuit Breaker/Rate Limiter**: Cosmos DB로 구현했으나, 실서비스에서는 지연 시간과 원자성을 고려하면 인메모리 DB가 더 적합하다.
 
 ---
