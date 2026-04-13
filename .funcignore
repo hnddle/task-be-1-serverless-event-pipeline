@@ -1,0 +1,12 @@
+*.js.map
+*.ts
+.git*
+.vscode
+local.settings.json
+test-event.json
+tests
+node_modules/.package-lock.json
+MANUAL_TEST.md
+notes.md
+SPEC.md
+PLAN.md
