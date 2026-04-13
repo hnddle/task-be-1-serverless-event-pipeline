@@ -536,11 +536,11 @@ Cosmos DB 클라이언트, 입력 검증, Message Broker 추상화, Notification
 - Cosmos DB Emulator 사용, `conftest.py`에서 fixture 제공
 - POST → 201, 중복 POST → 200, GET 조회 검증
 **Acceptance Criteria:**
-- [ ] POST /events → 201 + DB 저장 확인
-- [ ] 중복 POST → 200 + 기존 상태 반환
-- [ ] GET /events/{event_id} → 상세 조회 확인
-- [ ] GET /events → 목록 조회 + 페이지네이션 확인
-- [ ] Tests pass
+- [x] POST /events → 201 + DB 저장 확인
+- [x] 중복 POST → 200 + 기존 상태 반환
+- [x] GET /events/{event_id} → 상세 조회 확인
+- [x] GET /events → 목록 조회 + 페이지네이션 확인
+- [x] Tests pass
 
 ### Step 6-2: Outbox 흐름 통합 테스트
 **Objective:** POST → Change Feed → Event Grid 발행 흐름 통합 테스트.
