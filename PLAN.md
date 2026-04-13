@@ -330,10 +330,10 @@ Cosmos DB 클라이언트, 입력 검증, Message Broker 추상화, Notification
 - `_outbox_status: "pending"`으로 재갱신하여 Change Feed 재발화
 - 처리 건수 로그 기록
 **Acceptance Criteria:**
-- [ ] 1분 간격으로 실행됨
-- [ ] failed_publish 문서를 pending으로 재갱신
-- [ ] 재갱신 후 Change Feed가 다시 트리거됨
-- [ ] Tests pass
+- [x] 1분 간격으로 실행됨
+- [x] failed_publish 문서를 pending으로 재갱신
+- [x] 재갱신 후 Change Feed가 다시 트리거됨
+- [x] Tests pass
 
 ---
 
