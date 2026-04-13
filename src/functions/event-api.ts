@@ -123,8 +123,9 @@ export async function postEvents(
 
     try {
       await container.items.create(eventDoc);
-      logWithContext(logger, 'INFO', '이벤트 생성 완료', {
+      logWithContext(logger, 'INFO', '이벤트 생성 완료 (Outbox: pending)', {
         status: 'queued',
+        _outbox_status: 'pending',
         channels: validated.channels.join(','),
       });
 
